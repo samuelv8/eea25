@@ -50,10 +50,13 @@ RESET:
 	CALL USART_INIT		         ; goes to USART init code
 	LDI  R18, 'I'                ; increments by default
 
-READ_TO_GO:                      ; waits for open switch to start counting
+READ_TO_GO:                      ; waits for open switch and reset to start counting
     IN   R16, PIND               ;
     ANDI R16, 0b10000000         ;
     BREQ READ_TO_GO              ;
+	IN   R16, PINC				 ;
+	ANDI R16, 0b1000000 		 ;
+	BREQ READ_TO_GO				 ;
 	
 	CALL PRINT_INI_MSG           ; initial message on terminal
 
