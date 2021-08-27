@@ -40,9 +40,7 @@ RESET:
 	LDI	 R16, HIGH(0x8ff)
 	OUT	 SPH, R16
 	LDI  R16, 0b00001111         ; set PB0 to PB3 as OUTPUTS and PB4 to PB7 as INPUTS
-	OUT  DDRB, R16               ;
-	;LDI  R16, 0b10000000         ; set PD7 as INPUT
-	;OUT  DDRD, R16               ;
+	OUT  DDRB, R16               ; 
 	LDI  R17, 0b00000000         ; resets inicial pulse counter
 	OUT  PORTB, R17              ; write it to PORT B
 	CALL USART_INIT		         ; goes to USART init code
@@ -68,12 +66,15 @@ WAIT_SWITCH:
 
 WAIT_USART:
 	LDS  R16, UCSR0A
-	CPI  R16, RXC0
-	BRNE WAIT_SWITCH             ;
+	SBRS  R16, RXC0
+	RJMP WAIT_SWITCH             ;
+	LDS  R18, UDR0		         ; reads the data
  
 USART_INPUT:
-	LDS  R18, UDR0		         ; reads the data
 	CALL USART_TRANSMIT
+	LDI	 ZH, HIGH(2*CRLF)   	 ; 
+	LDI	 ZL, LOW(2*CRLF)
+	CALL SENDS
 	RJMP WAIT_SWITCH
 
 WAIT_SWITCH_RELEASE:             ; waits for switch release
@@ -119,7 +120,7 @@ USART_INIT:
 
 ;*********************************************************************
 ;  Subroutine USART_TRANSMIT  
-;  Transmits (TX) R16   
+;  Transmits (TX) R18   
 ;*********************************************************************
 USART_TRANSMIT:
     PUSH R17                     ; saves R17 into stack
