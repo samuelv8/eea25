@@ -12,14 +12,18 @@
 ;**            57600 bps,                                          **
 ;**            1 stop bit,                                         **
 ;**            no  parity                                          **
-; COMPLETE THIS
-;**       PORTD with bits 2 to 5 configured as OUTPUT              **
-;**                  bit 7 as INPUT                                **
+;**       PORTB with bits 0 to 3 configured as OUTPUT.             **
+;**       PORTD with bit 7 as INPUT.                               **
 ;**       The main program's part shows 4 LEDs connected to        **
-;**       4 least significant bits of PORT D.                      **
-;**       The pulse counter applied in PD7 when SW2 is pushed and  **
-;**       released. Register R17 is used to hold the pulse counter **
-;**       value.                                                   **
+;**       4 least significant bits of PORTB.                       **
+;**       The pulse counter applied in PD7 when SWITCH is pushed   **
+;**       and released. Register R17 is used to hold the pulse     **
+;**       counter value.                                           **
+;**		  USART interface is used to set if the counter is going   **
+;**		  increase/decrease by the SWITCH  input). Register R18    **
+;**		  is used to hold the operation mode ('I' or 'D').         **
+;**		  Default operation increases the counter.                 **
+;**       Counting starts at 0 and ends at 15 (cyclic)             **
 ;**
 ;**   Created: 2021/08/26 by samuelv8                              **
 ;********************************************************************
@@ -46,56 +50,58 @@ RESET:
 	CALL USART_INIT		         ; goes to USART init code
 	LDI  R18, 'I'                ; increments by default
 
-PRINT_MSG:
-	LDI	 ZH, HIGH(2*PROMPT1)	 ; prints the intial message
-	LDI	 ZL, LOW(2*PROMPT1)
-	CALL SENDS
-	LDI	 ZH, HIGH(2*PROMPT2)	 ; 
-	LDI	 ZL, LOW(2*PROMPT2)
-	CALL SENDS
-
 READ_TO_GO:                      ; waits for open switch to start counting
     IN   R16, PIND               ;
     ANDI R16, 0b10000000         ;
     BREQ READ_TO_GO              ;
+	
+	CALL PRINT_INI_MSG           ; initial message on terminal
 
 WAIT_SWITCH:
-    IN   R16, PIND               ;
+	IN   R16, PIND               ; check if switch is pressed
     ANDI R16, 0b10000000         ;
-	BREQ WAIT_SWITCH_RELEASE
+	BREQ WAIT_SWITCH_RELEASE	 ; 
 
 WAIT_USART:
-	LDS  R16, UCSR0A
-	SBRS  R16, RXC0
-	RJMP WAIT_SWITCH             ;
-	LDS  R18, UDR0		         ; reads the data
+	LDS  R16, UCSR0A			 ; check if there's an input at USART
+	SBRS R16, RXC0				 ;
+	RJMP WAIT_SWITCH             ; if there's no input, wait for switch
+	LDS  R18, UDR0		         ; else, reads the data
  
 USART_INPUT:
-	CALL USART_TRANSMIT
-	LDI	 ZH, HIGH(2*CRLF)   	 ; 
-	LDI	 ZL, LOW(2*CRLF)
-	CALL SENDS
-	RJMP WAIT_SWITCH
+	CALL USART_TRANSMIT          ; the given input is printed
+	LDI	 ZH, HIGH(2*CRLF)   	 ; prints "CRLF" for better output visualization
+	LDI	 ZL, LOW(2*CRLF)		 ;
+	CALL SENDS					 ;
+	RJMP WAIT_SWITCH			 ; wait for switch, now with new operation info stored
 
 WAIT_SWITCH_RELEASE:             ; waits for switch release
     IN   R16, PIND               ;
     ANDI R16,0b10000000          ;
     BREQ WAIT_SWITCH_RELEASE     ;
 
-DECISION:
-	CPI  R18, 'D'
-	BREQ DECREMENTS
+DECISION:                        ; decides which operation to do
+	CPI  R18, 'D'				 ; if 'D' input was given, decrements
+	BREQ DECREMENTS				 ; for anything else, increments
 
-INCREMENTS:                      ; counter increments and LED update
+INCREMENTS:                      ; counter increments and LED updates
 	INC  R17                     ;
     OUT  PORTB, R17              ;
-    JMP  WAIT_SWITCH             ; jumps to WAIT_SWITCH
+    JMP  WAIT_SWITCH             ; wait again for switch
 
-DECREMENTS:
-	DEC R17
-	OUT PORTB, R17
-	JMP WAIT_SWITCH
+DECREMENTS:						 ; counter decrements and LED updates
+	DEC R17						 ;
+	OUT PORTB, R17               ;
+	JMP WAIT_SWITCH				 ; wait again for switch
 
+;*********************************************************************
+;  Subroutine PRINT_INI_MSG  
+;  Prints the initial program message  
+;*********************************************************************
+PRINT_INI_MSG:
+	LDI	 ZH, HIGH(2*PROMPT)
+	LDI	 ZL, LOW(2*PROMPT)
+	CALL SENDS
 
 ;*********************************************************************
 ;  Subroutine USART_INIT  
@@ -123,15 +129,15 @@ USART_INIT:
 ;  Transmits (TX) R18   
 ;*********************************************************************
 USART_TRANSMIT:
-    PUSH R17                     ; saves R17 into stack
+    PUSH R16                   ; saves R16 into stack
 
 WAIT_TRANSMIT:
-	LDS	 R17, UCSR0A
-	SBRS R17, UDRE0		        ; waits for TX buffer to get empty
+	LDS	 R16, UCSR0A
+	SBRS R16, UDRE0		       ; waits for TX buffer to get empty
 	RJMP WAIT_TRANSMIT
 	STS	 UDR0, R18	           ; writes data into the buffer
 
-	POP	R17                    ; restores R17
+	POP	 R16                   ; restores R16
 	RET
 
 ;*********************************************************************
@@ -139,7 +145,7 @@ WAIT_TRANSMIT:
 ;  Sends a message pointed by register Z in the FLASH memory
 ;*********************************************************************
 SENDS:
-	PUSH	R18
+	PUSH R18
 
 SENDS_REP:
 	LPM	 R18, Z+
@@ -154,10 +160,8 @@ END_SENDS:
 ;*********************************************************************
 ; Hard coded messages
 ;*********************************************************************
-PROMPT1: 
-	.DB  "Press I for increasing the counter ", 0x0a, 0x0d, '$'
-PROMPT2:
-	.DB  "Press D for decreasing the counter ", 0x0a, 0x0d, '$'
+PROMPT: 
+	.DB  "Press I for increasing the counter ", 0x0a, 0x0d, "Press D for decreasing the counter", 0x0a, 0x0d, '$'
 CRLF:
 	.DB  " ", 0x0a, 0x0d, '$'           ; carriage return & line feed chars             
 
