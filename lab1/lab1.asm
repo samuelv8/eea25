@@ -71,8 +71,14 @@ WAIT_USART:
 	RJMP WAIT_SWITCH             ; if there's no input, wait for switch
 	LDS  R18, UDR0		         ; else, reads the data
  
-USART_INPUT:
-	CALL USART_TRANSMIT          ; the given input is printed
+USART_INPUT:                     ; if the input is valid for changing the
+	CPI  R18, 'I'				 ; configuration (i.e. 'I' or 'D'), it 
+	BREQ PRINT_CONF              ; will be printed
+	CPI  R18, 'D'				 ;
+	BRNE WAIT_SWITCH			 ;
+	
+PRINT_CONF:
+	CALL USART_TRANSMIT          ; the current configuration is printed
 	LDI	 ZH, HIGH(2*CRLF)   	 ; prints "CRLF" for better output visualization
 	LDI	 ZL, LOW(2*CRLF)		 ;
 	CALL SENDS					 ;
