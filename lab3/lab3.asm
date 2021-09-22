@@ -52,7 +52,8 @@
    .equ  RETURN = 0x0A          ; Retorno do cursor.
    .equ  LINEFEED = 0x0D        ; Descida do cursor.
    .equ  TIMER1_COMPA_vect = 0x0022  ; Vetor para atendimento a interrupções TIMRE1_COMPA match.
-   .equ  CONST_OCR1A = 40000    ; Constante para o registrador OCR1A do TIMER1.
+   .equ  CONST_OCR1X = 1999    ; Constante para o registrador OCR1A do TIMER1.
+   .equ  CONST_ICR1 = 40000    ; Constante para o registrador ICR1 do TIMER1.
    
 ;*****************************
 ; Segmento de código (FLASH) *
@@ -187,20 +188,28 @@ WAIT_RECEIVE1:
    pop   r17                    ;Restaura R17 e retorna.
    ret
 
-;*********************************
-; TIMER1_INIT_MODE4              *
-; OCR1A =40000, PRESCALER/8      *
-;*********************************
+;**************************************
+; TIMER1_INIT_MODE4                   *
+; OCR1X=2000, ICR1=40000, PRESCALER/8 *
+;**************************************
 TIMER1_INIT_MODE4:
-; OCR1A = 15625
-   ldi   r16, CONST_OCR1A>>8
+   ldi   r16, CONST_OCR1X>>8     ; loads OCR1X
    sts   ocr1ah, r16
-   ldi   r16, CONST_OCR1A & 0xff		  ; ldi   r16, 15625 & 0xff
+   sts   ocr1bh, r16
+   sts   ocr1ch, r16
+   ldi   r16, CONST_OCR1X & 0xff
    sts   ocr1al, r16
+   sts   ocr1bl, r16
+   sts   ocr1cl, r16
+
+   ldi   r16, CONST_ICR1>>8      ; loads ICR1
+   sts   icr1h, r16
+   ldi   r16, CONST_ICR1 & 0xff
+   sts   icr1l, r16
 
 ; Modo 14, Fast-PWM: (WGM13, WGM12, WGM11, WGM10)=(1,1,1,0)
-; Set 
-   ldi   r16, (0<<com1a1) | (0<<com1a0) | (0<<com1b1) | (0<<com1b0) | (0<<com1c1) | (0<<com1c0) | (1<<wgm11) | (0<<wgm10)
+; Set non-inverting mode output: (COM1X1, COM1X0) = (1, 0)
+   ldi   r16, (1<<com1a1) | (0<<com1a0) | (1<<com1b1) | (0<<com1b0) | (1<<com1c1) | (0<<com1c0) | (1<<wgm11) | (0<<wgm10)
    sts   tccr1a, r16
 
 ; Modo 14, Fast-PWM: (WGM13, WGM12, WGM11, WGM10)=(1,1,1,0)
@@ -210,8 +219,7 @@ TIMER1_INIT_MODE4:
    sts   tccr1b, r16
 
 ; Timer/Counter 1 Interrupt(s) initialization
-; Aqui, por exemplo, pede interrupcao sempre que contagem=OCR1A
-   ldi   r16, (0<<icie1) | (0<<ocie1c) | (0<<ocie1b) | (1<<ocie1a) | (0<<toie1)
+   ldi   r16, (0<<icie1) | (0<<ocie1c) | (0<<ocie1b) | (0<<ocie1a) | (0<<toie1)
    sts   timsk1, r16
 
    ret
