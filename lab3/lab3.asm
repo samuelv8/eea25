@@ -115,11 +115,10 @@ TIMER1_COMPA_INTERRUPT:
 USART1_RX1_INTERRUPT:
    push  r16
 ; Esta interrupção foi disparada porque a USART1 recebeu um caracter
-;   e este já está disponível em UDR1 podendo ser lido imediatamente,
-;   sem a necessidade de testar o bit RXC1 do registrador UCSR1A.
-   lds   r16,udr1               ; R16 <-- caractere recebido.
-   call  USART1_TRANSMIT        ; Imprime caractere recebido.
-   call  FSM                    ; Le propriamente com a FSM
+; e este já está disponível em UDR1 podendo ser lido imediatamente
+   lds   r16,udr1               ; Carrega r16 com o caractere recebido
+   call  USART1_TRANSMIT        ; Imprime caractere
+   call  FSM                    ; Chama a máquina de estados para processar o input
    pop   r16
    reti
 ;*                         FIM DO INTERRUPT DRIVER DO RECEPTOR DA USAR11                *
@@ -223,15 +222,17 @@ FSM:
 SET_S0:
    ldi  r19, 0
    ret
+; Verifica se recebeu 'S'
 S0:
    cpi  r16, 'S'
-   breq SET_S1
+   breq SET_S1  ; se sim, vai para o estado S1
    
    jmp  INVALID_INPUT
 
 SET_S1:
    ldi r19, 1
    ret
+; Verifica se recebeu '0', '1' ou '2'
 S1:
    cpi  r16, '0'
    breq SERVO
@@ -245,29 +246,31 @@ S1:
 SET_S2:
    ldi  r19, 2
    ret
+; Verifica se recebeu '+' ou '-'
 S2:
    cpi  r16, '+'
    breq SET_PLUS
    cpi  r16, '-'
    breq SET_MINUS
 
-   jmp  INVALID_INPUT  ; case the usart input is neither '+' or '-'
+   jmp  INVALID_INPUT
 
 SET_S3:
    ldi  r19, 3
    ret
+; Verifica se recebeu um dígito entre '0' e '9' para o primeiro
 S3:
    subi r16, '0'
-   brmi INVALID_INPUT   ; if received char is lower than '0'
+   brmi INVALID_INPUT   ; sai se for menor que '0'
    cpi  r16, 10
-   brlo SET_ANGLE_1     ; set if it is lower than 10
+   brlo SET_ANGLE_1     ; entra se for menor que '10'
 
    jmp  INVALID_INPUT      
-
 
 SET_S4:
    ldi  r19, 4
    ret
+; Verifica se recebeu um dígito entre '0' e '9' para o segundo
 S4:
    subi r16, '0'
    brmi INVALID_INPUT
@@ -278,6 +281,7 @@ S4:
 
 SET_S5:
    ldi  r19, 5
+; Configura o servo de acordo com o input
 S5:
    cpi  r18, 0
    breq SET_SERVO_A
@@ -294,7 +298,6 @@ INVALID_INPUT:
    ldi	ZH, HIGH(2*INVALID_MSG)
    ldi	ZL, LOW(2*INVALID_MSG)
    call SENDS
-
 RESET_INPUT:
    call NEW_INPUT_LINE ; imprime uma nova linha
    jmp  SET_S0         ; volta para o estado S0
