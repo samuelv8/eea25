@@ -1,46 +1,47 @@
 ;************************************************************************
-;*   Projeto ATMega2560 TIMER Interrupt                                 *
+;*   Projeto ATMega2560 Lab 3                                           *
 ;*                                                                      *
 ;*   Compilador:                                                        *
 ;*   AVRASM: AVR macro assembler 2.1.57 (build 16 Aug 27 2014 16:39:43) *
 ;*                                                                      *
 ;*   MCU alvo: Atmel ATmega2560 a 16 MHz com                            *
-;*       - Módulos de Leds de 7 segmentos conectados ao portl;          *
-;*       - Terminal alfanumérico "TERM0" conectado à USART0.            *
+;*       - 3 servo-motores conectados aos terminais PB5-PB7;            *
+;*       - Terminal alfanumérico "TERM1" conectado à USART1.            *
 ;*                                                                      *
-;*   Exemplifica interrupções periódicas do TIMER1 operando             *
-;*     no modo 4 (Clear on Terminal Count).  O TIMER1 recebe pulsos     *
-;*     da saída Clk=16MHz/1024 do PRESCALER e conta pulsos de           *
-;*     0 a 15625, valor com o qual OCR1A é inicializado.  Assim,        *
-;*     de 1024 X 15625 = 16000000 em 16000000 pulsos é produzida uma    *
-;*     interrupção (uma interrupção por segundo).                       *
+;*   O TIMER1 recebe pulsos da saída Clk=16MHz/8 do PRESCALER e conta   *
+;*   pulsos de 0 a 39999 (TOP), valor com o qual ICR1 é inicializado    *
+;*   (equivalente a um período de 20ms). Quando o contador atinge o TOP *
+;*   produz um pulso em OC1X com largura determinada por OCR1X, que é   *
+;*   definido entre 1999 (1ms) e 3999 (2ms). Esse pulso determina o     *
+;*   ângulo dos servos (entre -90 graus e +90 graus). Os servos         *
+;*   inicializam em 0 graus. Os ângulos são controlados via USART,      *
+;*   segundo o protocolo: SXsAA, com:                                   *
+;*       - S(fixo);                                                     *
+;*       - X={0,1,2}: servos A, B e C, respectivamente;                 *
+;*       - s={-,+}: sinal;                                              *
+;*       - AA={00-90}: ângulo.                                          *
 ;*                                                                      *
 ;*   Descricao:                                                         *
 ;*                                                                      *
 ;*       Inicializa o Stack Pointer com RAMEND;                         *
-;*       Configura  portl como saída e emite 0x00;                      *
-;*       Configura a USART0 para operar no modo assincrono com          *
+;*       Configura  portb como saída                                    *
+;*       Configura a USART1 para operar no modo assincrono com          *
 ;*            9600 bps,                                                 *
 ;*            1 stop bit,                                               *
 ;*            sem paridade;                                             *
-;*       Inicializa o TIMER1 para operar no Modo 4 para gerar um        *
-;          pedido de interrupção por segundo.                           *
+;*       Inicializa o TIMER1 para operar no Modo 14 para gerar os       *
+;        sinais de controle para os servos.                             *
 ;*       Habilita interrupções com "SEI";                               *
 ;*                                                                      *
-;*       A parte principal do programa fica em loop imprimindo o TERM0  *
-;*       a mensagem "Hello, World!".                                    *
+;*       A parte principal do programa fica em loop infinito.           *
 ;*                                                                      *
-;*       Quando TIMER1 atinge o valor em OCR1A, o elemento              *
-;*       de contagem TCNT1 é zerado, o nível emitido em OC1A (PB5)      * 
-;        é comoutado, interrupçao por OCR1A match                       *
-;*       é gerada, o Interrupt driver é acionado e:                     *
+;*       Quando o programa é interrompido por um input na USART1, é     * 
+;*       é chamada a rotina FSM, que implemente uma máquina de estado   *
+;*       finita, que verifica se a entrada segue o protocolo. Se não,   *
+;*       uma mensagem de erro é transmitida ao terminal e aguarda-se    *
+;*       um novo input.                                                 *
 ;*                                                                      *
-;*            Incrementa o valor emitido no portl, no qual estão        *
-;*              conectados displays de 7 segmentos;                     *
-;*            Retorna da interrupção com "RETI".                        * 
-;*                                                                      *
-;* Created: 07/09/2021 18:33:28 by chiepa                               *
-;* Modified: 10/09/2021 10:32:20 by dloubach                            *   
+;* Author: samuelv8                                                     *   
 ;************************************************************************
 
 ;***************
@@ -49,12 +50,12 @@
 ; Constantes para configurar baud rate (2400:416, 9600:103, 57600:16, 115200:8).
 
    .equ  BAUD_RATE = 103
-   .equ  RETURN = 0x0A          ; Retorno do cursor.
-   .equ  LINEFEED = 0x0D        ; Descida do cursor.
+   .equ  RETURN = 0x0A         ; Retorno do cursor.
+   .equ  LINEFEED = 0x0D       ; Descida do cursor.
    .equ  USART1_RXC1_vect = 0x0048 ; Vetor para atendimento a interrupções RXC1.
    .equ  TIMER1_COMPA_vect = 0x0022  ; Vetor para atendimento a interrupções TIMRE1_COMPA match.
-   .equ  CONST_OCR1X = 2999    ; Constante para o registrador OCR1X do TIMER1.
-   .equ  CONST_ICR1 = 40000    ; Constante para o registrador ICR1 do TIMER1.
+   .equ  CONST_OCR1X = 2999    ; Constante para o registrador OCR1X do TIMER1 (inicializa em 0 graus).
+   .equ  CONST_ICR1 = 39999    ; Constante para o registrador ICR1 do TIMER1.
    
 ;*****************************
 ; Segmento de código (FLASH) *
@@ -82,7 +83,7 @@ VETOR_USART1RX:
    .org  0x100
 RESET:
    ldi   r16, low(ramend)       ; Inicializa Stack Pointer.
-   out   spl, r16               ; Para ATMega328 RAMEND=08ff.
+   out   spl, r16              
    ldi   r16, high(ramend)
    out   sph, r16
 
@@ -91,60 +92,47 @@ RESET:
    call  TIMER1_INIT_MODE14     ; Inicializa TIMER1.
    sei                          ; Habilita interrupções.
 
-
 ;****************************************************************************************
 ;*                         PARTE PRINCIPAL DO PROGRAMA                                  *
-
 LOOP_PRINCIPAL:
    jmp   LOOP_PRINCIPAL
-
 ;*                         FIM DA PARTE PRINCIPAL DO PROGRAMA                           *
 ;****************************************************************************************
-
 
 ;****************************************************************************************
 ;*                        INTERRUPT DRIVER DO do TIMER1_COMPA match                     *
 ;                                TIMER1_COMPA_INTERRUPT                                 * 
 TIMER1_COMPA_INTERRUPT:
-
 ; Esta interrupção foi disparada porque a TCNT1 atingiu o valor de ICR1.
 ; TCNT1 é automaticamente zerado pelo TIMER e a contagem recomeça.
    reti
-
 ;*                         FIM DO INTERRUPT DRIVER DO TIMER1                            *
 ;****************************************************************************************
-
 
 ;****************************************************************************************
 ;*                        INTERRUPT DRIVER DO RECEPTOR DA USART1                        *
 ;                                USART1_RX1_INTERRUPT                                   * 
 USART1_RX1_INTERRUPT:
    push  r16
-
 ; Esta interrupção foi disparada porque a USART1 recebeu um caracter
 ;   e este já está disponível em UDR1 podendo ser lido imediatamente,
 ;   sem a necessidade de testar o bit RXC1 do registrador UCSR1A.
    lds   r16,udr1               ; R16 <-- caractere recebido.
-
    call  USART1_TRANSMIT        ; Imprime caractere recebido.
    call  FSM                    ; Le propriamente com a FSM
-
    pop   r16
    reti
-
 ;*                         FIM DO INTERRUPT DRIVER DO RECEPTOR DA USAR11                *
 ;****************************************************************************************
 
 ;***********************************
 ;  INIT_PORTS                      *
 ;  Inicializa PORTB como saída     *
-;    em PB5 e entrada nos demais   *
-;    terminais.                    *
-;  Inicializa portl como saída     *
-;    e emite 0x00 em ambos.        *
+;  em PB5-PB7 e entrada nos demais *
+;  terminais.                      *
 ;***********************************
 INIT_PORTS:
-   ldi   r16, 0b11100000        ; Para emitir em PB5, PB6 e PB7 as ondas quadradas geradas pelo TIMER1.
+   ldi   r16, 0b11100000        ; Em PB5, PB6 e PB7 as ondas quadradas geradas pelo TIMER1 serão emitidas
    out   ddrb, r16
    ret
 
@@ -163,7 +151,6 @@ USART1_INIT:
    ldi   r16, low(BAUD_RATE)
    sts   ubrr1l, r16
 
-
 ;**************************************************************************************************
 ; ICSRB1 inicializado com interrupções RXCIE1 (interrompe quando recebe caractere) habilitadas.   *
 ;**************************************************************************************************
@@ -179,40 +166,47 @@ USART1_INIT:
 ;  USART1_TRANSMIT                   *
 ;  Subrotina para transmitir R16.    *
 ;*************************************
-
 USART1_TRANSMIT:
    push  r17                    ; Salva R17 na pilha.
-
 WAIT_TRANSMIT1:
    lds   r17, ucsr1a
    sbrs  r17, udre1             ;Aguarda BUFFER do transmissor ficar vazio.      
    rjmp  WAIT_TRANSMIT1
    sts   udr1, r16              ;Escreve dado no BUFFER.
-
    pop   r17                    ;Restaura R17 e retorna.
    ret
 
 ;*********************************************************************
-;  Subroutine SENDS
-;  Sends a message pointed by register Z in the FLASH memory
+;  SENDS
+;  Subrotina para enviar uma mensagem apontada pelo registrador Z
 ;*********************************************************************
 SENDS:
-	PUSH r16
+	push r16
 SENDS_REP:
-	LPM	 r16, Z+
-	CPI	 r16, 0
-	BREQ END_SENDS
-	CALL USART1_TRANSMIT
-	JMP	 SENDS_REP
+	lpm	 r16, Z+
+	cpi	 r16, 0
+	breq END_SENDS
+	call USART1_TRANSMIT
+	jmp	 SENDS_REP
 END_SENDS:
-	POP	 r16
-	RET
+	pop	 r16
+	ret
 
-;**************************************
+;*******************************************************************
 ; FSM
-
+; Subrotina que implementa a lógica de uma máquina de estados
+; finita, com estados de S0 a S9. O estado atual é guardado em
+; r19. A máquina executa a lógica de próximo estado e retorna.
+; Estados:
+;    - S0: inicial (nenhum input relevante, espera por S)
+;    - S1: foi lido S e verifica o input X
+;    - S2: foi lido X e verifica o input s
+;    - S3: foi lido s e verifica o input A
+;    - S4: foi lido A e verifica o segundo input A
+;    - S5: todo o protocolo foi lido e executa o respectivo comando 
+;*******************************************************************
 FSM:
-   cpi  r19, 0
+   cpi  r19, 0  ; verifica qual o estado atual
    breq S0
    cpi  r19, 1
    breq S1
@@ -224,18 +218,18 @@ FSM:
    breq S4
    cpi  r19, 5
    breq S5
-   ret
+   ret          ; se nenhum estado válido é verificado, retorna
 
-INIT_S0:
+SET_S0:
    ldi  r19, 0
    ret
 S0:
    cpi  r16, 'S'
-   breq INIT_S1
+   breq SET_S1
    
-   jmp  INVALID_INPUT ; case the usart input is not 'S'
+   jmp  INVALID_INPUT
 
-INIT_S1:
+SET_S1:
    ldi r19, 1
    ret
 S1:
@@ -246,9 +240,9 @@ S1:
    cpi  r16, '2'
    breq SERVO
 
-   jmp  INVALID_INPUT ; case the usart input is neither '0', '1' or '2'
+   jmp  INVALID_INPUT
 
-INIT_S2:
+SET_S2:
    ldi  r19, 2
    ret
 S2:
@@ -259,7 +253,7 @@ S2:
 
    jmp  INVALID_INPUT  ; case the usart input is neither '+' or '-'
 
-INIT_S3:
+SET_S3:
    ldi  r19, 3
    ret
 S3:
@@ -271,7 +265,7 @@ S3:
    jmp  INVALID_INPUT      
 
 
-INIT_S4:
+SET_S4:
    ldi  r19, 4
    ret
 S4:
@@ -282,7 +276,7 @@ S4:
 
    jmp  INVALID_INPUT
 
-INIT_S5:
+SET_S5:
    ldi  r19, 5
 S5:
    cpi  r18, 0
@@ -294,14 +288,16 @@ S5:
    
    jmp  INVALID_INPUT
 
+; Imprime uma mensagem de erro caso o input não esteja dentro do protocolo
 INVALID_INPUT:
    call NEW_INPUT_LINE
    ldi	ZH, HIGH(2*INVALID_MSG)
    ldi	ZL, LOW(2*INVALID_MSG)
    call SENDS
+
 RESET_INPUT:
-   call NEW_INPUT_LINE  ; print a new line and go back to state S0
-   jmp  INIT_S0
+   call NEW_INPUT_LINE ; imprime uma nova linha
+   jmp  SET_S0         ; volta para o estado S0
 
 NEW_INPUT_LINE:
    push r16
@@ -312,36 +308,40 @@ NEW_INPUT_LINE:
    pop  r16
    ret
 
+; Carrega r18 com o número correspondente ao servo
 SERVO:
    subi r16, '0'
-   mov  r18, r16    ; loads r18 with the corresponding servo (0, 1 or 2)
-   jmp  INIT_S2
+   mov  r18, r16
+   jmp  SET_S2    ; vai para o estado S2
 
+; Carrega o MSB de r17 para guardar se o número é positivo (0) ou negativo (1)
 SET_MINUS:
    ldi  r17, 0b10000000
-   jmp  INIT_S3
+   jmp  SET_S3    ; vai para o estado S3
 SET_PLUS:
    ldi  r17, 0
-   jmp  INIT_S3
+   jmp  SET_S3
 
+; Carrega o valor correspondente ao primeiro dígito (r16) em r20
 SET_ANGLE_1:
    push r17
    ldi  r17, 10
-   mul  r16, r17    ; multiplies first digit by 10
-   mov  r20, r0     ; stores the result in r20
+   mul  r16, r17    ; multiplica por 10
+   mov  r20, r0     
    pop  r17
-   jmp  INIT_S4
-
+   jmp  SET_S4
+; Soma o valor do segundo dígito (r16) com o primeiro em r20 e mapeia no no intervalo [0, 180]
 SET_ANGLE_2:
    push r17
-   add  r20, r16    ; sums the second digit
-   sbrc r17, 7      ; skips if angle is positive
-   neg  r20
-   ldi  r17, 90     ; [-90, 90] to [0, 180]
+   add  r20, r16
+   sbrc r17, 7      ; verifica se o ângulo é negativo
+   neg  r20         ; se for, é complementado
+   ldi  r17, 90     ; mapeia no intervalo de interesse
    add  r20, r17
    pop  r17
-   jmp  INIT_S5
+   jmp  SET_S5      ; vai para o estado S5
 
+; Define o valor de OCR1X com base no input dado
 SET_SERVO_A:
    call  ANGLE_LOGIC   
    sts   ocr1ah, r21
@@ -361,28 +361,27 @@ SET_SERVO_C:
    jmp   RESET_INPUT
 
 ;**************************************
-; angle position [0, 180] stored in R20
-; loads OCR1X value in R20, R21
+; ANGLE_LOGIC
+; Subrotina para obter o valor de contagem OCR1X para obter o ângulo desejado (em r20),
+; consultando o valor na lookup table. O resultado é armazenado em r21 (H) e r20 (L)
 ANGLE_LOGIC:
 	ldi  r21, 0
-	add  r20, r20                 ; gets double of value (16 bits)
-	adc  r21, r21                 ; stores carry in R21
+	add  r20, r20                 ; pega o dobro do valor (lookup table com words)
+	adc  r21, r21                 ; guarda o carry em r21
 	ldi  ZH, high(angle_table<<1)
 	ldi  ZL, low(angle_table<<1)
 	add  ZL, r20
 	adc  ZH, r21
-	lpm  r20, Z+                  ; low
-	lpm  r21, Z                   ; high
-	
+	lpm  r20, Z+                  ; parte baixa
+	lpm  r21, Z                   ; parte alta
 	ret
-
 
 ;**************************************
 ; TIMER1_INIT_MODE14                  *
-; OCR1X=2999, ICR1=40000, PRESCALER/8 *
+; OCR1X=2999, ICR1=39999, PRESCALER/8 *
 ;**************************************
 TIMER1_INIT_MODE14:
-   ldi   r16, CONST_OCR1X>>8     ; loads OCR1X
+   ldi   r16, CONST_OCR1X>>8     
    sts   ocr1ah, r16
    sts   ocr1bh, r16
    sts   ocr1ch, r16
@@ -391,7 +390,7 @@ TIMER1_INIT_MODE14:
    sts   ocr1bl, r16
    sts   ocr1cl, r16
 
-   ldi   r16, CONST_ICR1>>8      ; loads ICR1
+   ldi   r16, CONST_ICR1>>8  
    sts   icr1h, r16
    ldi   r16, CONST_ICR1 & 0xff
    sts   icr1l, r16
@@ -407,22 +406,18 @@ TIMER1_INIT_MODE14:
    ldi   r16,(0<<icnc1) | (0<<ices1) | (1<<wgm13) | (1<<wgm12) | (0<<cs12) |(1<<cs11) | (0<<cs10)
    sts   tccr1b, r16
 
-; Timer/Counter 1 Interrupt(s) initialization
-   ldi   r16, (0<<icie1) | (0<<ocie1c) | (0<<ocie1b) | (0<<ocie1a) | (0<<toie1)
-   sts   timsk1, r16
-
    ret
 
    .org  0x200
-;*********************************************************************
-; Hard coded messages
-;*********************************************************************
+;************************************
+; Mensagens hardcoded
+;************************************
 INVALID_MSG:
    .db "Invalid input. ",0
-;************************************
-; Lookup Table with timer constants *
-; for each integer angle in [0, 180]*
-;************************************
+;****************************************************************
+; Lookup Table com os valores de OCR1X TIMER1 (16MHz/8 PRESCALER) 
+; para cada ângulo inteiro no intervalo [-90, 90]
+;****************************************************************
 angle_table:
    .dw 1999,2010,2021,2032,2043,2055,2066,2077,2088,2099,2110,2121,2132,2143,2155,2166,2177,2188,2199,2210,2221,2232,2243,2255,2266
    .dw 2277,2288,2299,2310,2321,2332,2343,2355,2366,2377,2388,2399,2410,2421,2432,2443,2455,2466,2477,2488,2499,2510,2521,2532,2543
