@@ -95,7 +95,6 @@ RESET:
 ;****************************************************************************************
 ;*                         PARTE PRINCIPAL DO PROGRAMA                                  *
 
-   call ANGLE_LOGIC
 LOOP_PRINCIPAL:
    jmp   LOOP_PRINCIPAL
 
@@ -193,6 +192,21 @@ WAIT_TRANSMIT1:
    pop   r17                    ;Restaura R17 e retorna.
    ret
 
+;*********************************************************************
+;  Subroutine SENDS
+;  Sends a message pointed by register Z in the FLASH memory
+;*********************************************************************
+SENDS:
+	PUSH r16
+SENDS_REP:
+	LPM	 r16, Z+
+	CPI	 r16, 0
+	BREQ END_SENDS
+	CALL USART1_TRANSMIT
+	JMP	 SENDS_REP
+END_SENDS:
+	POP	 r16
+	RET
 
 ;**************************************
 ; FSM
@@ -281,17 +295,20 @@ S5:
    jmp  INVALID_INPUT
 
 INVALID_INPUT:
+   call NEW_INPUT_LINE
+   ldi	ZH, HIGH(2*INVALID_MSG)
+   ldi	ZL, LOW(2*INVALID_MSG)
+   call SENDS
+RESET_INPUT:
    call NEW_INPUT_LINE  ; print a new line and go back to state S0
    jmp  INIT_S0
 
 NEW_INPUT_LINE:
    push r16
-
    ldi  r16, LINEFEED
    call USART1_TRANSMIT
    ldi  r16, RETURN
    call USART1_TRANSMIT
-
    pop  r16
    ret
 
@@ -327,25 +344,24 @@ SET_SERVO_A:
    call  ANGLE_LOGIC   
    sts   ocr1ah, r21
    sts   ocr1al, r20
-   ret
+   jmp   RESET_INPUT
 
 SET_SERVO_B:
    call  ANGLE_LOGIC   
    sts   ocr1bh, r21
    sts   ocr1bl, r20
-   ret
+   jmp   RESET_INPUT
 
 SET_SERVO_C:
    call  ANGLE_LOGIC   
    sts   ocr1ch, r21
    sts   ocr1cl, r20
-   ret
+   jmp   RESET_INPUT
 
 ;**************************************
 ; angle position [0, 180] stored in R20
 ; loads OCR1X value in R20, R21
 ANGLE_LOGIC:
-	ldi  r20, 180
 	ldi  r21, 0
 	add  r20, r20                 ; gets double of value (16 bits)
 	adc  r21, r21                 ; stores carry in R21
@@ -396,7 +412,11 @@ TIMER1_INIT_MODE14:
    ret
 
    .org  0x200
-
+;*********************************************************************
+; Hard coded messages
+;*********************************************************************
+INVALID_MSG:
+   .db "Invalid input. ",0
 ;************************************
 ; Lookup Table with timer constants *
 ; for each integer angle in [0, 180]*
