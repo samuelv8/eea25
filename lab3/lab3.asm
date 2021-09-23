@@ -318,8 +318,10 @@ SERVO:
    jmp  INIT_S2
 
 SET_MINUS:
-   ori   r30, 0b10000000
+   ldi  r17, 0b10000000
+   jmp  INIT_S3
 SET_PLUS:
+   ldi  r17, 0
    jmp  INIT_S3
 
 SET_ANGLE_1:
@@ -333,7 +335,7 @@ SET_ANGLE_1:
 SET_ANGLE_2:
    push r17
    add  r20, r16    ; sums the second digit
-   sbrc r30, 7      ; skips if angle is positive
+   sbrc r17, 7      ; skips if angle is positive
    neg  r20
    ldi  r17, 90     ; [-90, 90] to [0, 180]
    add  r20, r17
