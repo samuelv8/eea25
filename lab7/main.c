@@ -20,16 +20,18 @@ FILE usart0_str = FDEV_SETUP_STREAM(USART0SendByte, USART0ReceiveByte, _FDEV_SET
 FILE usart1_str = FDEV_SETUP_STREAM(USART1SendByte, USART1ReceiveByte, _FDEV_SETUP_RW);
 
 /* Variaveis globais  */
-char MASTER;
+char is_master;
+int g_state; // init: 0 | servo: 1-5 | led:11-15
 
 int main(void)
 {
 	DDRL = 0x00;
-	MASTER = (PINL == 0b10000000);
+	is_master = (PINL == 0b10000000);
+	g_state = 0;
 	USART0Init();
 	USART1Init();
 	sei();
-	if (MASTER)
+	if (is_master)
 	{
 		fprintf(&usart0_str, "%s*** MASTER ***\n", LAST_COMMIT);
 	} 
@@ -39,6 +41,16 @@ int main(void)
 	}
     while (1) 
     {
+		if (is_master)
+		{
+			fprintf(&usart0_str, "Insert a command to the slave>\n");
+			char terminalEntryChar = '\0';
+			while(!fscanf(&usart0_str, "%c", &terminalEntryChar) || terminalEntryChar == '\n'){}
+			// logic
+		} 
+		else
+		{
+		}
     }
 }
 
@@ -93,10 +105,10 @@ void USART0Init(void)
 	/* Inicializacao da USART1:
 	       8 bits, 1 stop bit, sem paridade
 		   Baud rate = 9600 bps
-		   Interrupcoes por recepcao de caractere
+		   Sem interrupcoes
 	*/
 	UCSR0A=(0<<RXC0) | (0<<TXC0) | (0<<UDRE0) | (0<<FE0) | (0<<DOR0) | (0<<UPE0) | (0<<U2X0) | (0<<MPCM0);
-	UCSR0B=(1<<RXCIE0) | (0<<TXCIE0) | (0<<UDRIE0) | (1<<RXEN0) | (1<<TXEN0) | (0<<UCSZ02) | (0<<RXB80) | (0<<TXB80);
+	UCSR0B=(0<<RXCIE0) | (0<<TXCIE0) | (0<<UDRIE0) | (1<<RXEN0) | (1<<TXEN0) | (0<<UCSZ02) | (0<<RXB80) | (0<<TXB80);
 	UCSR0C=(0<<UMSEL01) |(0<<UMSEL00) | (0<<UPM01) | (0<<UPM00) | (0<<USBS0) | (1<<UCSZ01) | (1<<UCSZ00) | (0<<UCPOL0);
 	UBRR0H=0x00;
 	UBRR0L=16;
@@ -117,12 +129,19 @@ int USART0SendByte(char u8Data,FILE *stream)
 
 int USART0ReceiveByte(FILE *stream)
 {
-	uint8_t u8Data;
-	// Espera recepcao de byte
-	while(!(UCSR0A&(1<<RXC0)));
-	u8Data=UDR0;
-	// Retorna dado o recebido
-	return u8Data;
+	if (is_master)
+	{
+		uint8_t u8Data;
+		// Espera recepcao de byte
+		while(!(UCSR0A&(1<<RXC0)));
+		u8Data=UDR0;
+		// Retorna dado o recebido
+		return u8Data;	
+	} 
+	else
+	{
+		return 0;
+	}
 } 
 
 /************************
