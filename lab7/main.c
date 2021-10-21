@@ -28,13 +28,14 @@ char is_master;
 
 int main(void)
 {
-	DDRB = 0xff;
+	DDRB = 0xf0;
 	DDRF = 0x01;
 	DDRH = 0x03;
 	DDRL = 0x00;
 	is_master = (PINL == 0x80);  // PL7 alto -> master
 	USART0Init();
 	USART1Init();
+	Timer1Init();
 	sei();
 	if (is_master)
 	{
@@ -172,9 +173,11 @@ void ChangeServoAngle(char servo,int angle)
 		case '0':
 			OCR1AH = angleConst>>8;
 			OCR1AL = angleConst & 0xff;
+			break;
 		case '1':
 			OCR1BH = angleConst>>8;
 			OCR1BL = angleConst & 0xff;
+			break;
 		case '2':
 			OCR1CH = angleConst>>8;
 			OCR1CL = angleConst & 0xff;
