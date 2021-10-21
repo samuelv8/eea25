@@ -107,6 +107,7 @@ int main(void)
 					break;
 				}
 			}
+			fprintf(&usart0_str, "%s\n", masterMessage);
 			// process command
 			char valid = 0;
 			char servo;
