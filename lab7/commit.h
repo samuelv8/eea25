@@ -1,1 +1,1 @@
-#define LAST_COMMIT "asdksaldk"
+#define LAST_COMMIT "572ef90"
