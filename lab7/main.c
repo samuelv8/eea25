@@ -31,7 +31,7 @@ int main(void)
 {
 	DDRB = 0x00;
 	DDRF = 0x01;
-	DDRH = 0x02;
+	DDRH = 0x03;
 	DDRL = 0x00;
 	is_master = (PINL == 0x80);  // PL7 alto -> master
 	g_state = 0;
@@ -113,7 +113,7 @@ int main(void)
 			char valid = 0;
 			char servo;
 			int angle;
-			int servoAttr = sscanf(masterMessage, "S%[0-2]%2d", &servo, &angle);
+			int servoAttr = sscanf(masterMessage, "S%[0-2]%3d", &servo, &angle);
 			char led;
 			char switchChar;
 			int ledAttr = sscanf(masterMessage, "L%[0-1]O%c", &led, &switchChar);
@@ -121,13 +121,13 @@ int main(void)
 			if (servoAttr == 2)
 			{
 				valid = 1;
-				fprintf(&usart0_str, "servo: %c angle: %d", servo, angle);
+				fprintf(&usart0_str, "servo: %c angle: %d\n", servo, angle);
 				ChangeServoAngle(servo, angle);
 			} 
 			else if (ledAttr == 2)
 			{
 				valid = 1;
-				fprintf(&usart0_str, "led: %c char: %c", led, switchChar);
+				fprintf(&usart0_str, "led: %c char: %c\n", led, switchChar);
 				SwitchLed(led, switchChar);
 			}
 			// returns response
@@ -156,25 +156,45 @@ int angle_lookup_table[181] = {
 	3943,3955,3966,3977,3988,3999
 };
 
-int angleLogic(int angle)
+int AngleLogic(int angle)
 {
-	return 0;
+	return angle_lookup_table[90+angle];
 }
 
 void ChangeServoAngle(char servo,int angle)
 {
-	
+	if (angle < -90) {
+		angle = -90;
+	}
+	if (angle > 90) {
+		angle = 90;
+	}
+	int angleConst = AngleLogic(angle);
 	switch(servo)
 	{
 		case '0':
+			OCR1AH = angleConst>>8;
+			OCR1AL = angleConst & 0xff;
 		case '1':
+			OCR1BH = angleConst>>8;
+			OCR1BL = angleConst & 0xff;
 		case '2':
+			OCR1CH = angleConst>>8;
+			OCR1CL = angleConst & 0xff;
 			break;
 	}
 	return;
 }
-void SwitchLed(char led,char sw)
+void SwitchLed(char led,char switchCar)
 {
+	int ledId = led - '0';
+	if (switchCar == 'N') {
+		PORTH ^= ((-1) ^ PORTH) & (1 << ledId);
+	}
+	else
+	{
+		PORTH ^= (0 ^ PORTH) & (0 << ledId);
+	}
 	return;
 }
 
