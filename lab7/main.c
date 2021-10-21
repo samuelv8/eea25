@@ -25,16 +25,14 @@ FILE usart1_str = FDEV_SETUP_STREAM(USART1SendByte, USART1ReceiveByte, _FDEV_SET
 
 /* Variaveis globais  */
 char is_master;
-int g_state; // init: 0 | servo: 1-5 | led:11-15
 
 int main(void)
 {
-	DDRB = 0x00;
+	DDRB = 0xff;
 	DDRF = 0x01;
 	DDRH = 0x03;
 	DDRL = 0x00;
 	is_master = (PINL == 0x80);  // PL7 alto -> master
-	g_state = 0;
 	USART0Init();
 	USART1Init();
 	sei();
@@ -121,13 +119,11 @@ int main(void)
 			if (servoAttr == 2)
 			{
 				valid = 1;
-				fprintf(&usart0_str, "servo: %c angle: %d\n", servo, angle);
 				ChangeServoAngle(servo, angle);
 			} 
 			else if (ledAttr == 2)
 			{
 				valid = 1;
-				fprintf(&usart0_str, "led: %c char: %c\n", led, switchChar);
 				SwitchLed(led, switchChar);
 			}
 			// returns response
@@ -188,13 +184,8 @@ void ChangeServoAngle(char servo,int angle)
 void SwitchLed(char led,char switchCar)
 {
 	int ledId = led - '0';
-	if (switchCar == 'N') {
-		PORTH ^= ((-1) ^ PORTH) & (1 << ledId);
-	}
-	else
-	{
-		PORTH ^= (0 ^ PORTH) & (0 << ledId);
-	}
+	int sw = (switchCar == 'N');
+	PORTH = (PORTH & ~(1 << ledId)) | (sw << ledId);
 	return;
 }
 
@@ -219,11 +210,17 @@ void Timer1Init(void)
     TCCR1A=(1<<COM1A1) | (0<<COM1A0) | (1<<COM1B1) | (0<<COM1B0) | (1<<COM1C1) | (0<<COM1C0) | (1<<WGM11) | (0<<WGM10);
     TCCR1B=(0<<ICNC1) | (0<<ICES1) | (1<<WGM13) | (1<<WGM12) | (0<<CS12) | (1<<CS11) | (0<<CS10);
  
-    OCR1AH=OCR1BH=OCR1CH=CONST_OCR1X>>8;
-    OCR1AL=OCR1BL=OCR1CL=CONST_OCR1X & 0xff;
+    OCR1AH=CONST_OCR1X>>8;
+    OCR1AL=CONST_OCR1X & 0xff;
+	OCR1BH=CONST_OCR1X>>8;
+	OCR1BL=CONST_OCR1X & 0xff;
+	OCR1CH=CONST_OCR1X>>8;
+	OCR1CL=CONST_OCR1X & 0xff;
 	
 	ICR1H=CONST_ICR1>>8;
 	ICR1L=CONST_ICR1 & 0xff;
+	
+	TIMSK1=(0<<ICIE1) | (0<<OCIE1C) | (0<<OCIE1B) | (1<<OCIE1A) | (0<<TOIE1);
 
   }
 
