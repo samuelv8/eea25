@@ -1,0 +1,676 @@
+//****************************************************
+//  Microprograma para emulacao do processador MP8   *
+//****************************************************
+
+//*************************
+//  Declaração de sinais  *
+//*****************************************
+//                                        *
+
+//  Sinais para controle da ULA.
+FIELD {EULA,OP0,OP1,OP2,OP3}
+
+//  Sinais para controle do gerador de constantes.
+FIELD {EK,SK0,SK1}
+
+//  Sinais para controle do registrador de flags.
+FIELD {CLEARCARRY,SETCARRY,CMC,LCARRY,LPARITY,LACARRY,LZERO,LSIGNAL,LFLAGS,EFLAGS}
+
+//  Sinais para controle do Registrador Acumulador (A).
+FIELD {EAD,EAULA,LA}
+
+//  Sinais para controle do Registrador T1.
+FIELD {ET1D,ET1ULA,LT1}
+
+//  Sinais para controle do Registrador T2.
+FIELD {ET2D,ET2ULA,LT2}
+
+//  Sinais para controle do Registrador T3.
+FIELD {ET3D,ET3ULA,LT3}
+
+//  Sinais para controle do Registrador SP.
+FIELD {INCSP,DECSP,LSPH,LSPL,ESPHD,ESPLD,ESPA}
+
+//  Sinais para controle do Registrador PC.
+FIELD {INCPC,LPCH,LPCL,EPCHD,EPCLD,EPCA}
+
+//  Sinais para controle do Registrador BC.
+FIELD {INCBC,DECBC,LBCH,LBCL,EBCHD,EBCLD,EBCA}
+
+//  Sinais para controle do Registrador DE.
+FIELD {INCDE,DECDE,LDEH,LDEL,EDEHD,EDELD,EDEA}
+
+//  Sinais para controle do Registrador HL.
+FIELD {INCHL,DECHL,LHLH,LHLL,EHLHD,EHLLD,EHLA}
+
+//  Sinaid para controle do Registrador X.
+FIELD {INCX,DECX,LXH,LXL,EXHD,EXLD,EXA}
+
+//  Sinais para controle do Registrador Y.
+FIELD {INCY,DECY,LYH,LYL,EYHD,EYLD,EYA}
+
+//  Sinais para controle do Registrador Z.
+FIELD {INCZ,DECZ,LZH,LZL,EZHD,EZLD,EZA}
+
+//  Sinais para controle do Registrador de Instrucoes (I).
+FIELD {LI,EID}
+
+//  Sinais para controle dos buffers para o exterior.
+FIELD {ESD,EED,ESA}
+
+//  Sinais para controle da Memoria e das Portas de IO.
+FIELD {MR,MW,IOR,IOW}
+
+//                                        *
+//*****************************************
+
+
+//*******************
+//  Microprograma   *
+//*****************************************
+//                                        *
+
+INICIO:		{EK,LPCH,LPCL}
+BUSCA:		{EPCA,ESA,EED,MR,LI} JMP_IRUN EXECUTA
+ESPERA_ZERO:	{} JMP_ISTEP ESPERA_ZERO
+ESPERA_UM:	{} JMP_ISTEP EXECUTA
+		{} JMP ESPERA_UM
+
+EXECUTA:	{INCPC}  JMP_MAP
+
+
+
+
+// LXI	SP,d16	; [31],[d16L],[d16H]
+// Essa instrução é codificada com a sequência de 3 bytes indicada acima.
+// Carrega o registrador SP com o valor de 16 bits d16.
+MAP(31)		EQU I_LXI_SP_D16
+I_LXI_SP_D16:
+		{EPCA,ESA,EED,MR,LSPL}
+		{INCPC}
+		{EPCA,ESA,EED,MR,LSPH}
+		{INCPC}	  JMP BUSCA
+
+
+// LXI	H,d16	 ; [21],[d16L],[d16H]
+// Essa instrução é codificada com a sequência de 3 bytes indicada acima.
+// Carrega o registrador HL com o valor de 16 bits d16.
+
+MAP(21)		EQU I_LXI_H_D16
+I_LXI_H_D16:
+		{EPCA,ESA,EED,MR,LHLL}
+		{INCPC}
+		{EPCA,ESA,EED,MR,LHLH}
+		{INCPC}	  JMP BUSCA
+
+
+// MVI	A,d8	; [3E],[d8]
+// Essa instrução é codificada com a sequência de 2 bytes indicada acima.
+// Carrega o registrador A com o valor de 8 bits d8.
+MAP(3E)	EQU I_MVI_A_D8
+I_MVI_A_D8:	{EPCA,ESA,EED,MR,LA}
+		{INCPC}	  JMP BUSCA
+
+
+// MVI	M,d8	; [36],[d8]
+// Essa instrução é codificada com a sequência de 2 bytes indicada acima.
+// Carrega a posição de memória apontada por HL com o valor de 8 bits d8.
+MAP(36)		EQU I_MVI_M_D8
+I_MVI_M_D8:	{EPCA,ESA,EED,MR,LT2}
+		{ET2D,ESD,EHLA,ESA,MW,INCPC}  JMP BUSCA
+
+
+// MOV	A,M	; [7E]
+// Essa instrução é codificada com o byte indicado acima.
+// Carrega carrega o registrador A com o dado da posição de memória apontada por HL.
+MAP(7E)		EQU I_MOV_A_M
+I_MOV_A_M:	{EHLA,ESA,EED,MR,LA}  JMP BUSCA
+
+
+// MOV	A,B	; [78]
+// Essa instrução é codificada com o byte indicado acima.
+// Copia o conteúdo de B em A.
+MAP(78)		EQU I_MOV_A_B
+I_MOV_A_B:	{EBCHD,LA}  JMP BUSCA
+
+
+// MOV	A,D	; [7A]
+// Essa instrução é codificada com o byte indicado acima.
+// Copia o conteúdo de D em A.
+MAP(7A)		EQU I_MOV_A_D
+I_MOV_A_D:	{EDEHD,LA}  JMP BUSCA
+
+
+// MOV	A,H	; [7C]
+// Essa instrução é codificada com o byte indicado acima.
+// Copia o conteúdo de H em A.
+MAP(7C)		EQU I_MOV_A_H
+I_MOV_A_H:	{EHLHD,LA}  JMP BUSCA
+
+
+// MOV	B,M	; [46]
+// Essa instrução é codificada com o byte indicado acima.
+// Carrega o registrador B com o dado da posição de memória apontada por HL.
+MAP(46)		EQU I_MOV_B_M
+I_MOV_B_M:	{EHLA,ESA,EED,MR,LBCH}  JMP BUSCA
+
+
+// MOV	B,A	; [47]
+// Essa instrução é codificada com o byte indicado acima.
+// Copia o conteúdo de A em B.
+MAP(47)		EQU I_MOV_B_A
+I_MOV_B_A:	{EAD,LBCH}  JMP BUSCA
+
+// MOV	C,M	; [4E]
+//Essa instrução é codificada com o byte indicado acima.
+//Carrega o registrador C com o dado da posição de memória apontada por HL.
+MAP(4E)		EQU I_MOV_C_M
+I_MOV_C_M:	{EHLA,ESA,EED,MR,LBCL}  JMP BUSCA
+
+
+// MOV	D,M	; [56]
+// Essa instrução é codificada com o byte indicado acima.
+// Carrega o registrador D com o dado da posição de memória apontada por HL.
+MAP(56)		EQU I_MOV_D_M
+I_MOV_D_M:	{EHLA,ESA,EED,MR,LDEH}  JMP BUSCA
+
+
+// MOV	M,B	; [70]
+// Essa instrução é codificada com o byte indicado acima.
+// Copia na posição de memória apontada por HL o conteúdo de B.
+MAP(70)		EQU I_MOV_M_B
+I_MOV_M_B:	{EBCHD,EHLA,ESA,ESD,MW}  JMP BUSCA
+
+
+// MOV	M,C	; [71]
+// Essa instrução é codificada com o byte indicado acima.
+// Copia na posição de memória apontada por HL o conteúdo de C.
+MAP(71)		EQU I_MOV_M_C
+I_MOV_M_C:	{EBCLD,EHLA,ESA,ESD,MW}  JMP BUSCA
+
+
+// MOV	M,A	; [77]
+// Essa instrução é codificada com o byte indicado acima.
+// Copia na posição de memória apontada por HL o conteúdo de A.
+MAP(77)		EQU I_MOV_M_A
+I_MOV_M_A:	{EAD,EHLA,ESA,ESD,MW}  JMP BUSCA
+
+
+// LHLD	a16	; [2A],[a16L],[a16H]
+// Essa instrução é codificada com a sequência de 3 bytes indicada acima.
+// Carrega o registrador HL com o dado da posição de memória apontada por a16,
+// efetuando L<--Mem[a16] e H<--Mem[a16+1].
+
+MAP(2A)		EQU I_LHLD_A16
+I_LHLD_A16:	{EPCA,ESA,EED,MR,LXL}
+		{INCPC}
+		{EPCA,ESA,EED,MR,LXH}
+		{EXA,ESA,EED,MR,LHLL,INCPC}
+		{INCX}
+		{EXA,ESA,EED,MR,LHLH}	  JMP BUSCA
+
+
+// SHLD	a16	; [22],[a16L],[a16H]
+// Essa instrução é codificada com a sequência de 3 bytes indicada acima.
+// Copia o conteúdo de HL posição de memória apontada por a16,
+// efetuando Mem[a16]<--L e Mem[a16+1]<--H.
+MAP(22)		EQU I_SHLD_A16
+I_SHLD_A16:	{EPCA,ESA,EED,MR,LXL}
+		{INCPC}
+		{EPCA,ESA,EED,MR,LXH}
+		{EXA,ESA,ESD,EHLLD,MW,INCPC}
+		{INCX}
+		{EXA,ESA,ESD,EHLHD,MW}  JMP BUSCA
+		
+
+// PUSH	PSW	; [F5]
+// A instrução empilha PSW.
+// (A,FLAGS), concatenação de A com os FLAGS, constitui o registrador PSW.
+// Os empilhamentos devem ocorrer de acordo com os seguintes pontos:
+//     -  São sempre empilhados pares de bytes;
+//     -  A execução de instruções deve deixar SP apontando para o último byte empilhado,
+//        o qual será sempre o byte menos significativo;
+//     -  O empilhamento PSW, um registrador de 16 bits, deve ocorrer com os passos:
+//               SP é decrementado;
+//               Mem[SP]<--A;
+//               SP é decrementado;
+//               Mem[SP]<--FLAGS.
+
+MAP(0F5)	EQU I_PUSH_PSW
+I_PUSH_PSW:	{DECSP}
+		{ESPA,ESA,EAD,ESD,MW}
+		{DECSP}
+		{ESPA,ESA,EFLAGS,ESD,MW}  JMP BUSCA
+
+
+// PUSH	B	; [C5]
+// A instrução empilha o conteúdo de BC.
+// Os empilhamentos devem ocorrer de acordo com os seguintes pontos:
+//     -  São sempre empilhados pares de bytes;
+//     -  A execução de instruções deve deixar SP apontando para o último byte empilhado,
+//        o qual será sempre o byte menos significativo;
+//     -  O empilhamento BC, um registrador de 16 bits, deve ocorrer com os passos:
+//               SP é decrementado;
+//               Mem[SP]<--B;
+//               SP é decrementado;
+//               Mem[SP]<--C.
+
+MAP(0C5)	EQU I_PUSH_B
+I_PUSH_B:	{DECSP}
+		{ESPA,ESA,EBCHD,ESD,MW}
+		{DECSP}
+		{ESPA,ESA,EBCLD,ESD,MW}  JMP BUSCA
+
+
+// PUSH	D	; [D5]
+// A instrução empilha o conteúdo de DE.
+// Os empilhamentos devem ocorrer de acordo com os seguintes pontos:
+//     -  São sempre empilhados pares de bytes;
+//     -  A execução de instruções deve deixar SP apontando para o último byte empilhado,
+//        o qual será sempre o byte menos significativo;
+//     -  O empilhamento DE, um registrador de 16 bits, deve ocorrer com os passos:
+//               SP é decrementado;
+//               Mem[SP]<--D;
+//               SP é decrementado;
+//               Mem[SP]<--E.
+
+MAP(0D5)	EQU I_PUSH_D
+I_PUSH_D:	{DECSP}
+		{ESPA,ESA,EDEHD,ESD,MW}
+		{DECSP}
+		{ESPA,ESA,EDELD,ESD,MW}  JMP BUSCA
+
+
+// PUSH	H	; [E5]
+// A instrução empilha o conteúdo de DE.
+// Os empilhamentos devem ocorrer de acordo com os seguintes pontos:
+//     -  São sempre empilhados pares de bytes;
+//     -  A execução de instruções deve deixar SP apontando para o último byte empilhado,
+//        o qual será sempre o byte menos significativo;
+//     -  O empilhamento DE, um registrador de 16 bits, deve ocorrer com os passos:
+//               SP é decrementado;
+//               Mem[SP]<--D;
+//               SP é decrementado;
+//               Mem[SP]<--E.
+
+MAP(0E5)	EQU I_PUSH_H
+I_PUSH_H:	{DECSP}
+		{ESPA,ESA,EHLHD,ESD,MW}
+		{DECSP}
+		{ESPA,ESA,EHLLD,ESD,MW}  JMP BUSCA
+
+
+// POP	PSW	; [F1]
+// A carrega PSW com o dado de 16 bits no topo da pilha.
+// Os desempilhamentos ocorrem de forma inversa à dos empilhamento:
+//     -  São sempre desempilados pares de bytes;
+//     -  O empilhamento desempilhamento de PSW, um registrador de 16 bits, deve ocorrer com os
+//        passos:
+//               FLAGS<--Mem[SP];
+//               SP é incrementado;
+//               A<--Mem[SP];
+//               SP é incrementado.
+
+MAP(0F1)	EQU I_POP_PSW
+I_POP_PSW:	{ESPA,ESA,EED,MR,LFLAGS}
+		{INCSP}
+		{ESPA,ESA,EED,MR,LA}
+		{INCSP}	  JMP BUSCA
+
+
+// POP	B	; [C1]
+// A carrega BC com o dado de 16 bits no topo da pilha.
+// Os desempilhamentos ocorrem de forma inversa à dos empilhamento:
+//     -  São sempre desempilados pares de bytes;
+//     -  O empilhamento desempilhamento de BC, um registrador de 16 bits, deve ocorrer com os
+//         passos:
+//               C<--Mem[SP];
+//               SP é incrementado;
+//               B<--Mem[SP];
+//               SP é incrementado.
+
+MAP(0C1)	EQU I_POP_B
+I_POP_B:	{ESPA,ESA,EED,MR,LBCL}
+		{INCSP}
+		{ESPA,ESA,EED,MR,LBCH}
+		{INCSP}  JMP BUSCA
+
+
+// POP	D	; [D1]
+// A carrega DE com o dado de 16 bits no topo da pilha.
+// Os desempilhamentos ocorrem de forma inversa à dos empilhamento:
+//     -  São sempre desempilados pares de bytes;
+//     -  O empilhamento desempilhamento de DE, um registrador de 16 bits, deve ocorrer com os
+//        passos:
+//               E<--Mem[SP];
+//               SP é incrementado;
+//               D<--Mem[SP];
+//               SP é incrementado.
+
+MAP(0D1)	EQU I_POP_D
+I_POP_D:	{ESPA,ESA,EED,MR,LDEL}
+		{INCSP}
+		{ESPA,ESA,EED,MR,LDEH}
+		{INCSP}	  JMP BUSCA
+
+
+// POP	H	; [E1]
+// A carrega HL com o dado de 16 bits no topo da pilha.
+// Os desempilhamentos ocorrem de forma inversa à dos empilhamento:
+//     -  São sempre desempilados pares de bytes;
+//     -  O empilhamento desempilhamento de HL, um registrador de 16 bits, deve ocorrer com os
+//        passos:
+//               L<--Mem[SP];
+//               SP é incrementado;
+//               H<--Mem[SP];
+//                 SP é incrementado.
+
+MAP(0E1)	EQU I_POP_H
+I_POP_H:	{ESPA,ESA,EED,MR,LHLL}
+		{INCSP}
+		{ESPA,ESA,EED,MR,LHLH}
+		{INCSP}	  JMP BUSCA
+
+
+// JMP	a16	; [C3],[a16L],[a16H]
+// Salta para o endereço a16.
+// É implementada utilizando o registrado X como auxiliar, efetuando X<--a16 seguido de PC<--X.
+
+MAP(0C3)	EQU I_JMP_A16
+I_JMP_A16:	{EPCA,ESA,EED,MR,LXL}
+		{INCPC}
+		{EPCA,ESA,EED,MR,LXH}
+		{EXLD,LPCL}
+		{EXHD,LPCH}  JMP BUSCA
+
+
+// JZ	a16	; [CA],[a16L],[a16H]
+// Salta para o endereço a16 se o flag Z estiver ativado.
+// É implementada utilizando o X como auxiliar, efetuando X<--a16 seguido de PC<--X.
+
+MAP(0CA)	EQU I_JZ_A16
+I_JZ_A16:	{}		JMP_ZERO I_JMP_A16
+		{INCPC}
+		{INCPC}	  JMP BUSCA
+
+
+// JNZ	a16	; [C2],[a16L],[a16H]
+// Salta para o endereço a16 se o flag Z estiver desativado.
+// É implementada utilizando X como auxiliar, efetuando X<--a16 seguido de PC<--X.
+
+MAP(0C2)	EQU I_JNZ_A16
+I_JNZ_A16:	{}		JMP_ZERO NO_JMP
+		{}		JMP I_JMP_A16
+NO_JMP:		{INCPC}
+		{INCPC}	  JMP BUSCA
+
+
+// CALL	a16	; [CD],[a16L],[a16H]
+// Chama subrotina no endereço a16.
+// É implementada utilizando X como auxiliar, efetuando X<--a16; seguido do empilhamento  de
+// PC+2 e depois PC<--X.
+
+MAP(0CD)	EQU I_CALL_A16
+I_CALL_A16:	{DECSP,EPCHD,LXH}
+		{EPCLD,LXL}
+		{INCPC}
+		{INCPC}
+		{ESPA,ESA,EPCHD,ESD,MW}
+		{DECSP}
+		{ESPA,ESA,EPCLD,ESD,MW}
+		{EXA,ESA,EED,MR,LPCL}
+		{INCX}
+		{EXA,ESA,EED,MR,LPCH}	  JMP BUSCA
+
+
+// RET		; [C9]
+// Retorna de subrotina.
+// Copia em PC o endereço de 16 bits contido no topo da pilha.
+
+MAP(0C9)	EQU I_RET
+I_RET:		{ESPA,ESA,EED,MR,LPCL}
+		{INCSP}
+		{ESPA,ESA,EED,MR,LPCH}
+		{INCSP}	  JMP BUSCA
+
+
+// ADD	B	; [80]
+// Efetua A<--A+B afetando todos os flags.
+
+MAP(80)		EQU I_ADD_B
+I_ADD_B:	{EBCHD,LT2}
+ADD:		{EAULA,ET2ULA,EULA,LCARRY,LPARITY,LACARRY,LZERO,LSIGNAL,LA}  JMP BUSCA
+
+
+// ADD	C	; [81]
+// Efetua A<--A+C afetando todos os flags.
+
+MAP(81)		EQU I_ADD_C
+I_ADD_C:	{EBCLD,LT2}  JMP ADD
+
+
+// SUB	B	; [90]
+// Efetua A<--A-B afetando todos os flags.
+
+MAP(90)		EQU I_SUB_B
+I_SUB_B:	{EBCHD,LT2}
+SUB:		{EAULA,ET2ULA,OP1,EULA,LCARRY,LPARITY,LACARRY,LZERO,LSIGNAL,LA}  JMP BUSCA
+
+
+// SUB	C	; [91]
+// Efetua A<--A-C afetando todos os flags.
+
+MAP(91)		EQU I_SUB_C
+I_SUB_C:	{EBCLD,LT2}  JMP SUB
+
+
+// ORA	L	; [B5]
+// Efetua A<--A or L  afetando todos os flags.
+
+MAP(0B5)	EQU I_ORA_L
+I_ORA_L:	{EHLLD,LT2}
+		{EAULA,ET2ULA,OP2,OP1,EULA,LA,LCARRY,LPARITY,LACARRY,LZERO,LSIGNAL}	JMP BUSCA
+
+// INR A	; [3C]
+MAP(03C)	EQU I_INR_A
+I_INR_A:	{EK,SK0,LT2}
+		{EAULA,ET2ULA,EULA,LA,LPARITY,LACARRY,LZERO,LSIGNAL}	JMP BUSCA
+
+
+// DCR	A	; [3D]
+// Efetua A<--A-1 afetando todos os flags.
+
+MAP(3D)		EQU I_DCR_A
+I_DCR_A:	{EK,SK0,LT2}
+		{EAULA,ET2ULA,OP1,EULA,LA,LPARITY,LACARRY,LZERO,LSIGNAL}  JMP BUSCA
+
+
+// CPI	d8	; [FE],[d8]
+// Efetua A-d8 afetando todos os flags, descarta a diferença e deixa A inalterado.
+
+MAP(0FE)	EQU I_CPI_D8
+I_CPI_D8:
+{EPCA,ESA,EED,MR,LT2}
+	{EAULA,ET2ULA,OP1,EULA,LCARRY,LPARITY,LACARRY,LZERO,LSIGNAL,INCPC}  JMP BUSCA
+
+
+// ANI	d8	; [E6],[d8]
+// Efetua A<--A and d8 afetando todos os flags.
+
+MAP(0E6)	EQU I_ANI_D8
+I_ANI_D8:
+	{EPCA,ESA,EED,MR,LT2}
+	{EAULA,ET2ULA,OP2,OP0,EULA,LCARRY,LPARITY,LACARRY,LZERO,LSIGNAL,LA,INCPC}  JMP BUSCA
+
+
+// INX	H	; [23]
+// Efetua HL<--HL+1.
+
+MAP(23)		EQU I_INX_H
+I_INX_H:	{INCHL}	  JMP BUSCA
+
+
+// DCX	H	; [2B]
+// Efetua HL<--HL-1.
+
+MAP(2B)		EQU I_DCX_H
+I_DCX_H:	{DECHL}	  JMP BUSCA
+
+
+// OUT	a8	; [D3],[a8]
+// Efetua PORT[d8]<--A.
+
+MAP(0D3)	EQU I_OUT_A8
+I_OUT_A8:	{EPCA,ESA,EED,MR,LXH,LXL}
+		{EXA,ESA,ESD,EAD,IOW,INCPC}  JMP BUSCA
+
+
+// IN	a8	; [DB],[a8]
+// Efetua A<--PORT[d8].
+
+MAP(0DB)	EQU I_IN_A8
+I_IN_A8:	{EPCA,ESA,EED,MR,LXH,LXL}
+		{EXA,ESA,EED,IOR,LA,INCPC}  JMP BUSCA
+
+
+// STC	; [37]
+// Efetua CARRY<--1.
+
+MAP(37)		EQU I_STC
+I_STC:		{SETCARRY}  JMP BUSCA
+
+
+// CMC	; [3F]
+// Complementa CARRY.
+
+MAP(3F)		EQU I_CMC
+I_CMC:		{CMC}  JMP BUSCA
+
+//*********************************************************
+//*********************************************************
+//** Lab Instrucoes "Criando instrucoes"                 **
+//**                                                     **
+//**    Completar o microcodigo das instrucoes a abaixo  **
+//*********************************************************
+//*********************************************************
+
+// JC	a16	; [DA],[a16L],[a16H]
+// Salta para o endereço a16 se o flag CARRY estiver ativado.
+// É implementada utilizando o X como auxiliar, efetuando X<--a16 seguido de PC<--X.
+MAP(0DA)	EQU I_JC_A16
+I_JC_A16:	{}   JMP_CARRY JCSALTAR
+		{INCPC}
+		{INCPC}	JMP BUSCA
+
+JCSALTAR:	{EPCA,ESA,MR,EED,LXL}
+		{INCPC}
+		{EPCA,ESA,MR,EED,LXH}
+		{EXLD,LPCL}
+		{EXHD,LPCH} JMP BUSCA
+
+
+
+// LXI	B,d16	; [01],[d16L],[d16H]
+// Essa instrução é codificada com a sequência de 3 bytes indicada acima.
+// Efetua BC<--d16, isto é, B<--d16H e C<--d16L.
+MAP(01)		EQU I_LXI_B_D16
+I_LXI_B_D16:	{EPCA,ESA,MR,EED,LBCL}
+		{INCPC}
+		{EPCA,ESA,MR,EED,LBCH} 
+		{INCPC}  JMP BUSCA
+
+
+
+// LXI	D,d16	; [11],[d16L],[d16H]
+// Essa instrução é codificada com a sequência de 3 bytes indicada acima.
+// Efetua DE<--d16, isto é, D<--d16H e E<--d16L.
+MAP(11)		EQU I_LXI_D_D16
+I_LXI_D_D16:    {EPCA,ESA,EED,MR,LDEL}
+		{INCPC}
+		{EPCA,ESA,EED,MR,LDEH}
+		{INCPC}	JMP BUSCA
+
+
+
+// ADD	E	; [83]
+// Efetua A<--A+E afetando todos os flags.
+MAP(83)		EQU I_ADD_E
+I_ADD_E:	{EDELD,LT2}		// T2<--E
+		{ET2ULA,EAULA,EULA,LA,LCARRY,LACARRY,LZERO,LPARITY,LSIGNAL} JMP BUSCA
+
+
+
+// MOV	E,A	; [5F]
+// Essa instrução é codificada com o byte indicado acima.
+// Efetua E<--A.
+MAP(5F)		EQU I_MOV_E_A
+I_MOV_E_A:	{EAD,LDEL} JMP BUSCA
+
+
+
+// ACI	d8	; [CE],[d8]
+// Efetua A<--A+d8+CARRY afetando todos os flags.
+MAP(0CE)	EQU I_ACI_d8
+I_ACI_d8:	{EPCA,ESA,EED,MR,LT2}
+		{ET2ULA,EAULA,OP0,EULA,LA,LCARRY,LACARRY,LZERO,LPARITY,LSIGNAL}
+		{INCPC} JMP BUSCA
+
+
+
+// MOV	D,A	; [57]
+// Essa instrução é codificada com o byte indicado acima.
+// Efetua D<--A.
+MAP(57)		EQU I_MOV_D_A
+I_MOV_D_A:	{EAD,LDEH} JMP BUSCA
+
+
+
+// DAD	D	; [19]
+// Efetua HL<--HL+DE afetando apenas o flag CARRY.
+MAP(19)		EQU I_DAD_D
+I_DAD_D:	{EDELD,LT1}
+		{EHLLD,LT2}
+		{ET1ULA,ET2ULA,EULA,LHLL,LCARRY}
+
+		{EDEHD,LT1}
+		{EHLHD,LT2}
+		{ET1ULA,ET2ULA,OP0,EULA,LHLH,LCARRY} JMP BUSCA
+		
+
+
+// MOV	E,M	; [5E]
+// Essa instrução é codificada com o byte indicado acima.
+// Carrega o registrador E com o dado da posição de memória apontada por HL.
+MAP(5E)		EQU I_MOV_E_M
+I_MOV_E_M:	{EHLA,ESA,MR,EED,LDEL} JMP BUSCA
+
+
+
+// XCHG		; [EB]
+// Efetua a troca DE<-->HL, isto é, D<-->H e E<-->L.
+// Implementada  em 6 etapas com  X como auxiliar:
+// X <-- HL:   XH  <-- HLH;  XL <-- HLL;
+// HL <-- DE:  HLH <-- DEH; HLL <-- DEL;
+// DE <-- X:   DEH <-- XH;  DEL <-- XL.
+
+MAP(0EB)	EQU I_XCHG
+I_XCHG:		{LXH,EHLHD}
+		{LXL,EHLLD}
+
+		{LHLH,EDEHD}
+		{LHLL,EDELD}
+
+		{LDEH,EXHD}
+		{LDEL,EXLD} JMP BUSCA
+
+
+
+// PCHL		; [E9]
+// Efetua PC<--HL, isto é PCH<--H e PCL<--L.
+MAP(0E9)	EQU I_PCHL
+I_PCHL:		{LPCH,EHLHD}
+		{LPCL,EHLLD} JMP BUSCA
+
+
+
+
