@@ -1,0 +1,1372 @@
+//****************************************************
+//  Microprograma para emulacao do processador MP8   *
+//****************************************************
+
+//*************************
+//  Declaração de sinais  *
+//*****************************************
+//                                        *
+
+//  Sinais para controle da ULA.
+FIELD {EULA,OP0,OP1,OP2,OP3}
+
+//  Sinais para controle do gerador de constantes.
+FIELD {EK,SK0,SK1}
+
+//  Sinais para controle do registrador de flags.
+FIELD {CLEARCARRY,SETCARRY,CMC,LCARRY,LPARITY,LACARRY,LZERO,LSIGNAL,LFLAGS,EFLAGS}
+
+//  Sinais para controle do Registrador Acumulador (A).
+FIELD {EAD,EAULA,LA}
+
+//  Sinais para controle do Registrador T1.
+FIELD {ET1D,ET1ULA,LT1}
+
+//  Sinais para controle do Registrador T2.
+FIELD {ET2D,ET2ULA,LT2}
+
+//  Sinais para controle do Registrador T3.
+FIELD {ET3D,ET3ULA,LT3}
+
+//  Sinais para controle do Registrador SP.
+FIELD {INCSP,DECSP,LSPH,LSPL,ESPHD,ESPLD,ESPA}
+
+//  Sinais para controle do Registrador PC.
+FIELD {INCPC,LPCH,LPCL,EPCHD,EPCLD,EPCA}
+
+//  Sinais para controle do Registrador BC.
+FIELD {INCBC,DECBC,LBCH,LBCL,EBCHD,EBCLD,EBCA}
+
+//  Sinais para controle do Registrador DE.
+FIELD {INCDE,DECDE,LDEH,LDEL,EDEHD,EDELD,EDEA}
+
+//  Sinais para controle do Registrador HL.
+FIELD {INCHL,DECHL,LHLH,LHLL,EHLHD,EHLLD,EHLA}
+
+//  Sinaid para controle do Registrador X.
+FIELD {INCX,DECX,LXH,LXL,EXHD,EXLD,EXA}
+
+//  Sinais para controle do Registrador Y.
+FIELD {INCY,DECY,LYH,LYL,EYHD,EYLD,EYA}
+
+//  Sinais para controle do Registrador Z.
+FIELD {INCZ,DECZ,LZH,LZL,EZHD,EZLD,EZA}
+
+//  Sinais para controle do Registrador de Instrucoes (I).
+FIELD {LI,EID}
+
+//  Sinais para controle dos buffers para o exterior.
+FIELD {ESD,EED,ESA}
+
+//  Sinais para controle da Memoria e das Portas de IO.
+FIELD {MR,MW,IOR,IOW}
+
+//                                        *
+//*****************************************
+
+
+//*******************
+//  Microprograma   *
+//*****************************************
+//                                        *
+
+INICIO:		{EK,LPCH,LPCL}
+BUSCA:		{EPCA,ESA,EED,MR,LI} JMP_IRUN EXECUTA
+ESPERA_ZERO:	{} JMP_ISTEP ESPERA_ZERO
+ESPERA_UM:	{} JMP_ISTEP EXECUTA
+		{} JMP ESPERA_UM
+
+EXECUTA:	{INCPC}				JMP_MAP
+
+
+//*********************************************
+//  Instrucoes de movimentacao de dado imediato
+//*********************************************
+MAP(06)		EQU I_MVI_B_D8
+MAP(0E)		EQU I_MVI_C_D8
+MAP(16)		EQU I_MVI_D_D8
+MAP(1E)		EQU I_MVI_E_D8
+MAP(26)		EQU I_MVI_H_D8
+MAP(2E)		EQU I_MVI_L_D8
+MAP(36)		EQU I_MVI_M_D8
+MAP(3E)		EQU I_MVI_A_D8
+
+I_MVI_B_D8:	{EPCA,ESA,EED,MR,LBCH}
+		{INCPC}				JMP BUSCA
+
+I_MVI_C_D8:	{EPCA,ESA,EED,MR,LBCL}
+		{INCPC}				JMP BUSCA
+
+I_MVI_D_D8:	{EPCA,ESA,EED,MR,LDEH}
+		{INCPC}				JMP BUSCA
+
+I_MVI_E_D8:	{EPCA,ESA,EED,MR,LDEL}
+		{INCPC}				JMP BUSCA
+
+I_MVI_H_D8:	{EPCA,ESA,EED,MR,LHLH}
+		{INCPC}				JMP BUSCA
+
+I_MVI_L_D8:	{EPCA,ESA,EED,MR,LHLL}
+		{INCPC}				JMP BUSCA
+
+I_MVI_M_D8:	{EPCA,ESA,EED,MR,LT2}
+		{ET2D,ESD,EHLA,ESA,MW,INCPC}	JMP BUSCA
+
+I_MVI_A_D8:	{EPCA,ESA,EED,MR,LA}
+		{INCPC}				JMP BUSCA
+
+
+//*****************************
+//  Operacoes com dado imediato
+//*****************************
+MAP(0C6)	EQU I_ADI_D8
+MAP(0CE)	EQU I_ACI_D8
+MAP(0D6)	EQU I_SUI_D8
+MAP(0DE)	EQU I_SBI_D8
+MAP(0E6)	EQU I_ANI_D8
+MAP(0EE)	EQU I_XRI_D8
+MAP(0F6)	EQU I_ORI_D8
+MAP(0FE)	EQU I_CPI_D8
+
+I_ADI_D8:	{EPCA,ESA,EED,MR,LT2}
+		{EAULA,ET2ULA,EULA,LCARRY,LPARITY,LACARRY,LZERO,LSIGNAL,LA,INCPC}		JMP BUSCA
+
+I_ACI_D8:	{EPCA,ESA,EED,MR,LT2}
+		{EAULA,ET2ULA,OP0,EULA,LCARRY,LPARITY,LACARRY,LZERO,LSIGNAL,LA,INCPC}		JMP BUSCA
+
+I_SUI_D8:	{EPCA,ESA,EED,MR,LT2}
+		{EAULA,ET2ULA,OP1,EULA,LCARRY,LPARITY,LACARRY,LZERO,LSIGNAL,LA,INCPC}		JMP BUSCA
+
+I_SBI_D8:	{EPCA,ESA,EED,MR,LT2}
+		{EAULA,ET2ULA,OP1,OP0,EULA,LCARRY,LPARITY,LACARRY,LZERO,LSIGNAL,LA,INCPC}	JMP BUSCA
+
+I_ANI_D8:	{EPCA,ESA,EED,MR,LT2}
+		{EAULA,ET2ULA,OP2,OP0,EULA,LCARRY,LPARITY,LACARRY,LZERO,LSIGNAL,LA,INCPC}	JMP BUSCA
+
+I_XRI_D8:	{EPCA,ESA,EED,MR,LT2}
+		{EAULA,ET2ULA,OP2,OP1,OP0,EULA,LCARRY,LPARITY,LACARRY,LZERO,LSIGNAL,LA,INCPC}	JMP BUSCA
+
+I_ORI_D8:	{EPCA,ESA,EED,MR,LT2}
+		{EAULA,ET2ULA,OP2,OP1,EULA,LCARRY,LPARITY,LACARRY,LZERO,LSIGNAL,LA,INCPC}	JMP BUSCA
+
+I_CPI_D8:	{EPCA,ESA,EED,MR,LT2}
+		{EAULA,ET2ULA,OP1,EULA,LCARRY,LPARITY,LACARRY,LZERO,LSIGNAL,INCPC}		JMP BUSCA
+
+
+//************************************
+//  Instrucoes de movimentacao de dado
+//************************************
+MAP(40)		EQU I_MOV_B_B
+MAP(41)		EQU I_MOV_B_C
+MAP(42)		EQU I_MOV_B_D
+MAP(43)		EQU I_MOV_B_E
+MAP(44)		EQU I_MOV_B_H
+MAP(45)		EQU I_MOV_B_L
+MAP(46)		EQU I_MOV_B_M
+MAP(47)		EQU I_MOV_B_A
+
+I_MOV_B_B:	{}			JMP BUSCA
+
+I_MOV_B_C:	{EBCLD,LBCH}		JMP BUSCA
+
+I_MOV_B_D:	{EDEHD,LBCH}		JMP BUSCA
+
+I_MOV_B_E:	{EDELD,LBCH}		JMP BUSCA
+
+I_MOV_B_H:	{EHLHD,LBCH}		JMP BUSCA
+
+I_MOV_B_L:	{EHLLD,LBCH}		JMP BUSCA
+
+I_MOV_B_M:	{EHLA,ESA,EED,MR,LBCH}	JMP BUSCA
+
+I_MOV_B_A:	{EAD,LBCH}		JMP BUSCA
+
+MAP(48)		EQU I_MOV_C_B
+MAP(49)		EQU I_MOV_C_C
+MAP(4A)		EQU I_MOV_C_D
+MAP(4B)		EQU I_MOV_C_E
+MAP(4C)		EQU I_MOV_C_H
+MAP(4D)		EQU I_MOV_C_L
+MAP(4E)		EQU I_MOV_C_M
+MAP(4F)		EQU I_MOV_C_A
+
+I_MOV_C_B:	{EBCHD,LBCL}		JMP BUSCA
+
+I_MOV_C_C:	{}			JMP BUSCA
+
+I_MOV_C_D:	{EDEHD,LBCL}		JMP BUSCA
+
+I_MOV_C_E:	{EDELD,LBCL}		JMP BUSCA
+
+I_MOV_C_H:	{EHLHD,LBCL}		JMP BUSCA
+
+I_MOV_C_L:	{EHLLD,LBCL}		JMP BUSCA
+
+I_MOV_C_M:	{EHLA,ESA,EED,MR,LBCL}	JMP BUSCA
+
+I_MOV_C_A:	{EAD,LBCL}		JMP BUSCA
+
+MAP(50)		EQU I_MOV_D_B
+MAP(51)		EQU I_MOV_D_C
+MAP(52)		EQU I_MOV_D_D
+MAP(53)		EQU I_MOV_D_E
+MAP(54)		EQU I_MOV_D_H
+MAP(55)		EQU I_MOV_D_L
+MAP(56)		EQU I_MOV_D_M
+MAP(57)		EQU I_MOV_D_A
+
+I_MOV_D_B:	{EBCHD,LDEH}		JMP BUSCA
+
+I_MOV_D_C:	{EBCLD,LDEH}		JMP BUSCA
+
+I_MOV_D_D:	{}			JMP BUSCA
+
+I_MOV_D_E:	{EDELD,LDEH}		JMP BUSCA
+
+I_MOV_D_H:	{EHLHD,LDEH}		JMP BUSCA
+
+I_MOV_D_L:	{EHLLD,LDEH}		JMP BUSCA
+
+I_MOV_D_M:	{EHLA,ESA,EED,MR,LDEH}	JMP BUSCA
+
+I_MOV_D_A:	{EAD,LDEH}		JMP BUSCA
+
+MAP(58)		EQU I_MOV_E_B
+MAP(59)		EQU I_MOV_E_C
+MAP(5A)		EQU I_MOV_E_D
+MAP(5B)		EQU I_MOV_E_E
+MAP(5C)		EQU I_MOV_E_H
+MAP(5D)		EQU I_MOV_E_L
+MAP(5E)		EQU I_MOV_E_M
+MAP(5F)		EQU I_MOV_E_A
+
+I_MOV_E_B:	{EBCHD,LDEL}		JMP BUSCA
+
+I_MOV_E_C:	{EBCLD,LDEL}		JMP BUSCA
+
+I_MOV_E_D:	{EDEHD,LDEL}		JMP BUSCA
+
+I_MOV_E_E:	{}			JMP BUSCA
+
+I_MOV_E_H:	{EHLHD,LDEL}		JMP BUSCA
+
+I_MOV_E_L:	{EHLLD,LDEL}		JMP BUSCA
+
+I_MOV_E_M:	{EHLA,ESA,EED,MR,LDEL}	JMP BUSCA
+
+I_MOV_E_A:	{EAD,LDEL}		JMP BUSCA
+
+MAP(60)		EQU I_MOV_H_B
+MAP(61)		EQU I_MOV_H_C
+MAP(62)		EQU I_MOV_H_D
+MAP(63)		EQU I_MOV_H_E
+MAP(64)		EQU I_MOV_H_H
+MAP(65)		EQU I_MOV_H_L
+MAP(66)		EQU I_MOV_H_M
+MAP(67)		EQU I_MOV_H_A
+
+I_MOV_H_B:	{EBCHD,LHLH}		JMP BUSCA
+
+I_MOV_H_C:	{EBCLD,LHLH}		JMP BUSCA
+
+I_MOV_H_D:	{EDEHD,LHLH}		JMP BUSCA
+
+I_MOV_H_E:	{EDELD,LHLH}		JMP BUSCA
+
+I_MOV_H_H:	{}			JMP BUSCA
+
+I_MOV_H_L:	{EHLLD,LHLH}		JMP BUSCA
+
+I_MOV_H_M:	{EHLA,ESA,EED,MR,LHLH}	JMP BUSCA
+
+I_MOV_H_A:	{EAD,LHLH}		JMP BUSCA
+
+MAP(68)		EQU I_MOV_L_B
+MAP(69)		EQU I_MOV_L_C
+MAP(6A)		EQU I_MOV_L_D
+MAP(6B)		EQU I_MOV_L_E
+MAP(6C)		EQU I_MOV_L_H
+MAP(6D)		EQU I_MOV_L_L
+MAP(6E)		EQU I_MOV_L_M
+MAP(6F)		EQU I_MOV_L_A
+
+I_MOV_L_B:	{EBCHD,LHLL}		JMP BUSCA
+
+I_MOV_L_C:	{EBCLD,LHLL}		JMP BUSCA
+
+I_MOV_L_D:	{EDEHD,LHLL}		JMP BUSCA
+
+I_MOV_L_E:	{EDELD,LHLL}		JMP BUSCA
+
+I_MOV_L_H:	{EHLHD,LHLL}		JMP BUSCA
+
+I_MOV_L_L:	{}			JMP BUSCA
+
+I_MOV_L_M:	{EHLA,ESA,EED,MR,LHLL}	JMP BUSCA
+
+I_MOV_L_A:	{EAD,LHLL}		JMP BUSCA
+
+MAP(70)		EQU I_MOV_M_B
+MAP(71)		EQU I_MOV_M_C
+MAP(72)		EQU I_MOV_M_D
+MAP(73)		EQU I_MOV_M_E
+MAP(74)		EQU I_MOV_M_H
+MAP(75)		EQU I_MOV_M_L
+MAP(77)		EQU I_MOV_M_A
+
+I_MOV_M_B:	{EBCHD,EHLA,ESA,ESD,MW}	JMP BUSCA
+
+I_MOV_M_C:	{EBCLD,EHLA,ESA,ESD,MW}	JMP BUSCA
+
+I_MOV_M_D:	{EDEHD,EHLA,ESA,ESD,MW}	JMP BUSCA
+
+I_MOV_M_E:	{EDELD,EHLA,ESA,ESD,MW}	JMP BUSCA
+
+I_MOV_M_H:	{EHLHD,EHLA,ESA,ESD,MW}	JMP BUSCA
+
+I_MOV_M_L:	{EHLLD,EHLA,ESA,ESD,MW}	JMP BUSCA
+
+I_MOV_M_A:	{EAD,EHLA,ESA,ESD,MW}	JMP BUSCA
+
+MAP(78)		EQU I_MOV_A_B
+MAP(79)		EQU I_MOV_A_C
+MAP(7A)		EQU I_MOV_A_D
+MAP(7B)		EQU I_MOV_A_E
+MAP(7C)		EQU I_MOV_A_H
+MAP(7D)		EQU I_MOV_A_L
+MAP(7E)		EQU I_MOV_A_M
+MAP(7F)		EQU I_MOV_A_A
+
+I_MOV_A_B:	{EBCHD,LA}		JMP BUSCA
+
+I_MOV_A_C:	{EBCLD,LA}		JMP BUSCA
+
+I_MOV_A_D:	{EDEHD,LA}		JMP BUSCA
+
+I_MOV_A_E:	{EDELD,LA}		JMP BUSCA
+
+I_MOV_A_H:	{EHLHD,LA}		JMP BUSCA
+
+I_MOV_A_L:	{EHLLD,LA}		JMP BUSCA
+
+I_MOV_A_M:	{EHLA,ESA,EED,MR,LA}	JMP BUSCA
+
+I_MOV_A_A:	{}			JMP BUSCA
+
+
+//********************************************
+//  InstruCoes para carregar e armazenar bytes
+//********************************************
+MAP(0A)		EQU I_LDAX_B
+MAP(1A)		EQU I_LDAX_D
+MAP(2A)		EQU I_LHLD_A16
+MAP(3A)		EQU I_LDA_A16
+MAP(02)		EQU I_STAX_B
+MAP(12)		EQU I_STAX_D
+MAP(22)		EQU I_SHLD_A16
+MAP(32)		EQU I_STA_A16
+
+I_LDAX_B:	{EBCA,ESA,EED,MR,LA}		JMP BUSCA
+
+I_LDAX_D:	{EDEA,ESA,EED,MR,LA}		JMP BUSCA
+
+I_LHLD_A16:	{EPCA,ESA,EED,MR,LXL}
+		{INCPC}
+		{EPCA,ESA,EED,MR,LXH}
+		{EXA,ESA,EED,MR,LHLL,INCPC}
+		{INCX}
+		{EXA,ESA,EED,MR,LHLH}		JMP BUSCA
+
+I_LDA_A16:	{EPCA,ESA,EED,MR,LXL}
+		{INCPC}
+		{EPCA,ESA,EED,MR,LXH}
+		{EXA,ESA,EED,MR,LA,INCPC}	JMP BUSCA
+
+I_STAX_B:	{EBCA,ESA,ESD,EAD,MW}		JMP BUSCA
+
+I_STAX_D:	{EDEA,ESA,ESD,EAD,MW}		JMP BUSCA
+
+I_SHLD_A16:	{EPCA,ESA,EED,MR,LXL}
+		{INCPC}
+		{EPCA,ESA,EED,MR,LXH}
+		{EXA,ESA,ESD,EHLLD,MW,INCPC}
+		{INCX}
+		{EXA,ESA,ESD,EHLHD,MW}		JMP BUSCA
+		
+I_STA_A16:	{EPCA,ESA,EED,MR,LXL}
+		{INCPC}
+		{EPCA,ESA,EED,MR,LXH}
+		{EXA,ESA,ESD,EAD,MW,INCPC}	JMP BUSCA
+
+//**********************************************************************
+//  Instrucoes de carregamento de par de registradores com dado imediato
+//**********************************************************************
+MAP(01)		EQU I_LXI_B_D16
+MAP(11)		EQU I_LXI_D_D16
+MAP(21)		EQU I_LXI_H_D16
+MAP(31)		EQU I_LXI_SP_D16
+
+I_LXI_B_D16:
+		{EPCA,ESA,EED,MR,LBCL}
+		{INCPC}
+		{EPCA,ESA,EED,MR,LBCH}
+		{INCPC}				JMP BUSCA
+
+I_LXI_D_D16:
+		{EPCA,ESA,EED,MR,LDEL}
+		{INCPC}
+		{EPCA,ESA,EED,MR,LDEH}
+		{INCPC}				JMP BUSCA
+
+I_LXI_H_D16:
+		{EPCA,ESA,EED,MR,LHLL}
+		{INCPC}
+		{EPCA,ESA,EED,MR,LHLH}
+		{INCPC}				JMP BUSCA
+
+I_LXI_SP_D16:
+		{EPCA,ESA,EED,MR,LSPL}
+		{INCPC}
+		{EPCA,ESA,EED,MR,LSPH}
+		{INCPC}				JMP BUSCA
+
+//***********************
+//  Instrucoes DOUBLE ADD
+//***********************
+MAP(09)		EQU I_DAD_B
+MAP(19)		EQU I_DAD_D
+MAP(29)		EQU I_DAD_H
+MAP(39)		EQU I_DAD_SP
+
+I_DAD_B:	{EHLLD,LT1}
+		{EBCLD,LT2}
+		{ET1ULA,ET2ULA,EULA,LHLL,LCARRY}
+		{EHLHD,LT1}
+		{EBCHD,LT2}
+		{ET1ULA,ET2ULA,OP0,EULA,LHLH,LCARRY}	JMP BUSCA
+
+
+I_DAD_D:	{EHLLD,LT1}
+		{EDELD,LT2}
+		{ET1ULA,ET2ULA,EULA,LHLL,LCARRY}
+		{EHLHD,LT1}
+		{EDEHD,LT2}
+		{ET1ULA,ET2ULA,OP0,EULA,LHLH,LCARRY}	JMP BUSCA
+
+I_DAD_H:	{EHLLD,LT1,LT2}
+		{ET1ULA,ET2ULA,EULA,LHLL,LCARRY}
+		{EHLHD,LT1,LT2}
+		{ET1ULA,ET2ULA,OP0,EULA,LHLH,LCARRY}	JMP BUSCA
+
+I_DAD_SP:	{EHLLD,LT1}
+		{ESPLD,LT2}
+		{ET1ULA,ET2ULA,EULA,LHLL,LCARRY}
+		{EHLHD,LT1}
+		{ESPHD,LT2}
+		{ET1ULA,ET2ULA,OP0,EULA,LHLH,LCARRY}	JMP BUSCA
+
+//*****************************
+//  Instrucoes de incrementacao
+//*****************************
+MAP(04)		EQU I_INR_B
+MAP(0C)		EQU I_INR_C
+MAP(14)		EQU I_INR_D
+MAP(1C)		EQU I_INR_E
+MAP(24)		EQU I_INR_H
+MAP(2C)		EQU I_INR_L
+MAP(34)		EQU I_INR_M
+MAP(3C)		EQU I_INR_A
+MAP(03)		EQU I_INX_B
+MAP(13)		EQU I_INX_D
+MAP(23)		EQU I_INX_H
+MAP(33)		EQU I_INX_SP
+
+I_INR_B:	{EBCHD,LT1}
+		{EK,SK0,LT2}
+		{ET1ULA,ET2ULA,EULA,LBCH,LPARITY,LACARRY,LZERO,LSIGNAL}	JMP BUSCA
+
+I_INR_C:	{EBCLD,LT1}
+		{EK,SK0,LT2}
+		{ET1ULA,ET2ULA,EULA,LBCL,LPARITY,LACARRY,LZERO,LSIGNAL}	JMP BUSCA
+
+I_INR_D:	{EDEHD,LT1}
+		{EK,SK0,LT2}
+		{ET1ULA,ET2ULA,EULA,LDEH,LPARITY,LACARRY,LZERO,LSIGNAL}	JMP BUSCA
+
+I_INR_E:	{EDELD,LT1}
+		{EK,SK0,LT2}
+		{ET1ULA,ET2ULA,EULA,LDEL,LPARITY,LACARRY,LZERO,LSIGNAL}	JMP BUSCA
+
+I_INR_H:	{EHLHD,LT1}
+		{EK,SK0,LT2}
+		{ET1ULA,ET2ULA,EULA,LHLH,LPARITY,LACARRY,LZERO,LSIGNAL}	JMP BUSCA
+
+I_INR_L:	{EHLLD,LT1}
+		{EK,SK0,LT2}
+		{ET1ULA,ET2ULA,EULA,LHLL,LPARITY,LACARRY,LZERO,LSIGNAL}	JMP BUSCA
+
+I_INR_M:	{EHLA,ESA,EED,MR,LT1}
+		{EK,SK0,LT2}
+		{ET1ULA,ET2ULA,EULA,EHLA,ESA,LPARITY,LACARRY,LZERO,LSIGNAL,ESD,MW}	JMP BUSCA
+
+I_INR_A:	{EK,SK0,LT2}
+		{EAULA,ET2ULA,EULA,LA,LPARITY,LACARRY,LZERO,LSIGNAL}	JMP BUSCA
+
+I_INX_B:	{INCBC}	JMP BUSCA
+
+I_INX_D:	{INCDE}	JMP BUSCA
+
+I_INX_H:	{INCHL}	JMP BUSCA
+
+I_INX_SP:	{INCSP}	JMP BUSCA
+
+
+//*****************************
+//  Instrucoes de decrementacao
+//*****************************
+MAP(05)		EQU I_DCR_B
+MAP(0D)		EQU I_DCR_C
+MAP(15)		EQU I_DCR_D
+MAP(1D)		EQU I_DCR_E
+MAP(25)		EQU I_DCR_H
+MAP(2D)		EQU I_DCR_L
+MAP(35)		EQU I_DCR_M
+MAP(3D)		EQU I_DCR_A
+MAP(0B)		EQU I_DCX_B
+MAP(1B)		EQU I_DCX_D
+MAP(2B)		EQU I_DCX_H
+MAP(3B)		EQU I_DCX_SP
+
+I_DCR_B:	{EBCHD,LT1}
+		{EK,SK0,LT2}
+		{ET1ULA,ET2ULA,OP1,EULA,LBCH,LPARITY,LACARRY,LZERO,LSIGNAL}	JMP BUSCA
+
+I_DCR_C:	{EBCLD,LT1}
+		{EK,SK0,LT2}
+		{ET1ULA,ET2ULA,OP1,EULA,LBCL,LPARITY,LACARRY,LZERO,LSIGNAL}	JMP BUSCA
+
+I_DCR_D:	{EDEHD,LT1}
+		{EK,SK0,LT2}
+		{ET1ULA,ET2ULA,OP1,EULA,LDEH,LPARITY,LACARRY,LZERO,LSIGNAL}	JMP BUSCA
+
+I_DCR_E:	{EDELD,LT1}
+		{EK,SK0,LT2}
+		{ET1ULA,ET2ULA,OP1,EULA,LDEL,LPARITY,LACARRY,LZERO,LSIGNAL}	JMP BUSCA
+
+I_DCR_H:	{EHLHD,LT1}
+		{EK,SK0,LT2}
+		{ET1ULA,ET2ULA,OP1,EULA,LHLH,LPARITY,LACARRY,LZERO,LSIGNAL}	JMP BUSCA
+
+I_DCR_L:	{EHLLD,LT1}
+		{EK,SK0,LT2}
+		{ET1ULA,ET2ULA,OP1,EULA,LHLL,LPARITY,LACARRY,LZERO,LSIGNAL}	JMP BUSCA
+
+I_DCR_M:	{EHLA,ESA,EED,MR,LT1}
+		{EK,SK0,LT2}
+		{ET1ULA,ET2ULA,OP1,EULA,EHLA,ESA,LPARITY,LACARRY,LZERO,LSIGNAL,ESD,MW}	JMP BUSCA
+
+I_DCR_A:	{EK,SK0,LT2}
+		{EAULA,ET2ULA,OP1,EULA,LA,LPARITY,LACARRY,LZERO,LSIGNAL}	JMP BUSCA
+
+I_DCX_B:	{DECBC}	JMP BUSCA
+
+I_DCX_D:	{DECDE}	JMP BUSCA
+
+I_DCX_H:	{DECHL}	JMP BUSCA
+
+I_DCX_SP:	{DECSP}	JMP BUSCA
+
+
+//************************************
+//  Instrucoes de operacao com a pilha
+//************************************
+MAP(0C5)	EQU I_PUSH_B
+MAP(0D5)	EQU I_PUSH_D
+MAP(0E5)	EQU I_PUSH_H
+MAP(0F5)	EQU I_PUSH_PSW
+MAP(0C1)	EQU I_POP_B
+MAP(0D1)	EQU I_POP_D
+MAP(0E1)	EQU I_POP_H
+MAP(0F1)	EQU I_POP_PSW
+MAP(0E3)	EQU I_XTHL
+MAP(0F9)	EQU I_SPHL
+
+I_PUSH_B:	{DECSP}
+		{ESPA,ESA,EBCHD,ESD,MW}
+		{DECSP}
+		{ESPA,ESA,EBCLD,ESD,MW}		JMP BUSCA
+
+I_PUSH_D:	{DECSP}
+		{ESPA,ESA,EDEHD,ESD,MW}
+		{DECSP}
+		{ESPA,ESA,EDELD,ESD,MW}		JMP BUSCA
+
+I_PUSH_H:	{DECSP}
+		{ESPA,ESA,EHLHD,ESD,MW}
+		{DECSP}
+		{ESPA,ESA,EHLLD,ESD,MW}		JMP BUSCA
+
+I_PUSH_PSW:	{DECSP}
+		{ESPA,ESA,EAD,ESD,MW}
+		{DECSP}
+		{ESPA,ESA,EFLAGS,ESD,MW}	JMP BUSCA
+
+I_POP_B:	{ESPA,ESA,EED,MR,LBCL}
+		{INCSP}
+		{ESPA,ESA,EED,MR,LBCH}
+		{INCSP}				JMP BUSCA
+
+I_POP_D:	{ESPA,ESA,EED,MR,LDEL}
+		{INCSP}
+		{ESPA,ESA,EED,MR,LDEH}
+		{INCSP}				JMP BUSCA
+
+I_POP_H:	{ESPA,ESA,EED,MR,LHLL}
+		{INCSP}
+		{ESPA,ESA,EED,MR,LHLH}
+		{INCSP}				JMP BUSCA
+
+I_POP_PSW:	{ESPA,ESA,EED,MR,LFLAGS}
+		{INCSP}
+		{ESPA,ESA,EED,MR,LA}
+		{INCSP}				JMP BUSCA
+
+I_XTHL:		{EHLLD,LT1}
+		{ESPA,ESA,EED,MR,LHLL}
+		{ESPA,ESA,ESD,ET1D,MW}
+		{INCSP}
+		{EHLHD,LT1}
+		{ESPA,ESA,EED,MR,LHLH}
+		{ESPA,ESA,ESD,ET1D,MW}
+		{DECSP}				JMP BUSCA
+
+I_SPHL:		{EHLHD,LSPH}
+		{EHLLD,LSPL}			JMP BUSCA
+
+//**********************
+//  Instrucoes especiais
+//**********************
+MAP(0EB)	EQU I_XCHG
+MAP(27)		EQU I_DAA
+MAP(2F)		EQU I_CMA
+MAP(37)		EQU I_STC
+MAP(3F)		EQU I_CMC
+
+I_XCHG:		{EHLHD,LT1}
+		{EDEHD,LHLH}
+		{ET1D,LDEH}
+		{EHLLD,LT1}
+		{EDELD,LHLL}
+		{ET1D,LDEL}			JMP BUSCA
+
+I_DAA:		{EFLAGS,LT1}			JSR_NLS9 DAA_L
+		{EK,SK1,SK0,LT2}		JSR_NHS9 DAA_H
+		{}				JMP BUSCA
+
+DAA_L:		{EK,SK1,LT2}
+		{EAULA,ET2ULA,EULA,LA,LCARRY,LACARRY,LPARITY,LZERO,LSIGNAL}
+		{EFLAGS,LT2}
+		{ET1ULA,ET2ULA,OP2,OP1,LFLAGS}	RET
+
+DAA_H:		{EAULA,ET2ULA,EULA,LA,SETCARRY,LPARITY,LZERO,LSIGNAL}	RET
+
+
+I_CMA:		{EAULA,OP2,EULA,LA}		JMP BUSCA
+
+I_STC:		{SETCARRY}			JMP BUSCA
+
+I_CMC:		{CMC}				JMP BUSCA
+
+//*******************************
+//  Instrucoes de entrada e saida
+//*******************************
+MAP(0D3)	EQU I_OUT_A8
+MAP(0DB)	EQU I_IN_A8
+
+I_OUT_A8:	{EPCA,ESA,EED,MR,LXH,LXL}
+		{EXA,ESA,ESD,EAD,IOW,INCPC}	JMP BUSCA
+
+I_IN_A8:	{EPCA,ESA,EED,MR,LXH,LXL}
+		{EXA,ESA,EED,IOR,LA,INCPC}	JMP BUSCA
+
+
+//******************************************
+//  Instrucoes de operacoes com o Acumulador
+//******************************************
+
+//**************
+//  Operacao ADD
+//**************
+MAP(80)		EQU I_ADD_B
+MAP(81)		EQU I_ADD_C
+MAP(82)		EQU I_ADD_D
+MAP(83)		EQU I_ADD_E
+MAP(84)		EQU I_ADD_H
+MAP(85)		EQU I_ADD_L
+MAP(86)		EQU I_ADD_M
+MAP(87)		EQU I_ADD_A
+
+I_ADD_B:	{EBCHD,LT2}
+ADD:		{EAULA,ET2ULA,EULA,LCARRY,LPARITY,LACARRY,LZERO,LSIGNAL,LA}	JMP BUSCA
+
+I_ADD_C:	{EBCLD,LT2}		JMP ADD
+
+I_ADD_D:	{EDEHD,LT2}		JMP ADD
+
+I_ADD_E:	{EDELD,LT2}		JMP ADD
+
+I_ADD_H:	{EHLHD,LT2}		JMP ADD
+
+I_ADD_L:	{EHLLD,LT2}		JMP ADD
+
+I_ADD_M:	{EHLA,ESA,EED,MR,LT2}	JMP ADD
+
+I_ADD_A:	{EAD,LT2}		JMP ADD
+
+//**************
+//  Operacao ADC
+//**************
+MAP(88)		EQU I_ADC_B
+MAP(89)		EQU I_ADC_C
+MAP(8A)		EQU I_ADC_D
+MAP(8B)		EQU I_ADC_E
+MAP(8C)		EQU I_ADC_H
+MAP(8D)		EQU I_ADC_L
+MAP(8E)		EQU I_ADC_M
+MAP(8F)		EQU I_ADC_A
+
+I_ADC_B:	{EBCHD,LT2}
+ADC:		{EAULA,ET2ULA,OP0,EULA,LCARRY,LPARITY,LACARRY,LZERO,LSIGNAL,LA}		JMP BUSCA
+
+I_ADC_C:	{EBCLD,LT2}		JMP ADC
+
+I_ADC_D:	{EDEHD,LT2}		JMP ADC
+
+I_ADC_E:	{EDELD,LT2}		JMP ADC
+
+I_ADC_H:	{EHLHD,LT2}		JMP ADC
+
+I_ADC_L:	{EHLLD,LT2}		JMP ADC
+
+I_ADC_M:	{EHLA,ESA,EED,MR,LT2}	JMP ADC
+
+I_ADC_A:	{EAD,LT2}		JMP ADC
+
+//**************
+//  Operacao SUB
+//**************
+MAP(90)		EQU I_SUB_B
+MAP(91)		EQU I_SUB_C
+MAP(92)		EQU I_SUB_D
+MAP(93)		EQU I_SUB_E
+MAP(94)		EQU I_SUB_H
+MAP(95)		EQU I_SUB_L
+MAP(96)		EQU I_SUB_M
+MAP(97)		EQU I_SUB_A
+
+I_SUB_B:	{EBCHD,LT2}
+SUB:		{EAULA,ET2ULA,OP1,EULA,LCARRY,LPARITY,LACARRY,LZERO,LSIGNAL,LA}	JMP BUSCA
+
+I_SUB_C:	{EBCLD,LT2}		JMP SUB
+
+I_SUB_D:	{EDEHD,LT2}		JMP SUB
+
+I_SUB_E:	{EDELD,LT2}		JMP SUB
+
+I_SUB_H:	{EHLHD,LT2}		JMP SUB
+
+I_SUB_L:	{EHLLD,LT2}		JMP SUB
+
+I_SUB_M:	{EHLA,ESA,EED,MR,LT2}	JMP SUB
+
+I_SUB_A:	{EAD,LT2}		JMP SUB
+
+//**************
+//  Operacao SBB
+//**************
+MAP(98)		EQU I_SBB_B
+MAP(99)		EQU I_SBB_C
+MAP(9A)		EQU I_SBB_D
+MAP(9B)		EQU I_SBB_E
+MAP(9C)		EQU I_SBB_H
+MAP(9D)		EQU I_SBB_L
+MAP(9E)		EQU I_SBB_M
+MAP(9F)		EQU I_SBB_A
+
+I_SBB_B:	{EBCHD,LT2}
+SBB:		{EAULA,ET2ULA,OP1,OP0,EULA,LCARRY,LPARITY,LACARRY,LZERO,LSIGNAL,LA}	JMP BUSCA
+
+I_SBB_C:	{EBCLD,LT2}		JMP SBB
+
+I_SBB_D:	{EDEHD,LT2}		JMP SBB
+
+I_SBB_E:	{EDELD,LT2}		JMP SBB
+
+I_SBB_H:	{EHLHD,LT2}		JMP SBB
+
+I_SBB_L:	{EHLLD,LT2}		JMP SBB
+
+I_SBB_M:	{EHLA,ESA,EED,MR,LT2}	JMP SBB
+
+I_SBB_A:	{EAD,LT2}		JMP SBB
+
+//**************
+//  Operacao AND
+//**************
+MAP(0A0)	EQU I_ANA_B
+MAP(0A1)	EQU I_ANA_C
+MAP(0A2)	EQU I_ANA_D
+MAP(0A3)	EQU I_ANA_E
+MAP(0A4)	EQU I_ANA_H
+MAP(0A5)	EQU I_ANA_L
+MAP(0A6)	EQU I_ANA_M
+MAP(0A7)	EQU I_ANA_A
+
+I_ANA_B:	{EBCHD,LT2}
+ANA:		{EAULA,ET2ULA,OP2,OP0,EULA,LA,LCARRY,LPARITY,LACARRY,LZERO,LSIGNAL}	JMP BUSCA
+
+I_ANA_C:	{EBCLD,LT2}		JMP ANA
+
+I_ANA_D:	{EDEHD,LT2}		JMP ANA
+
+I_ANA_E:	{EDELD,LT2}		JMP ANA
+
+I_ANA_H:	{EHLHD,LT2}		JMP ANA
+
+I_ANA_L:	{EHLLD,LT2}		JMP ANA
+
+I_ANA_M:	{EHLA,ESA,EED,MR,LT2}	JMP ANA
+
+I_ANA_A:	{EAD,LT2}		JMP ANA
+
+//**************
+//  Operacao XOR
+//**************
+MAP(0A8)	EQU I_XRA_B
+MAP(0A9)	EQU I_XRA_C
+MAP(0AA)	EQU I_XRA_D
+MAP(0AB)	EQU I_XRA_E
+MAP(0AC)	EQU I_XRA_H
+MAP(0AD)	EQU I_XRA_L
+MAP(0AE)	EQU I_XRA_M
+MAP(0AF)	EQU I_XRA_A
+
+I_XRA_B:	{EBCHD,LT2}
+XRA:		{EAULA,ET2ULA,OP2,OP1,OP0,EULA,LA,LCARRY,LPARITY,LACARRY,LZERO,LSIGNAL}	JMP BUSCA
+
+I_XRA_C:	{EBCLD,LT2}		JMP XRA
+
+I_XRA_D:	{EDEHD,LT2}		JMP XRA
+
+I_XRA_E:	{EDELD,LT2}		JMP XRA
+
+I_XRA_H:	{EHLHD,LT2}		JMP XRA
+
+I_XRA_L:	{EHLLD,LT2}		JMP XRA
+
+I_XRA_M:	{EHLA,ESA,EED,MR,LT2}	JMP XRA
+
+I_XRA_A:	{EAD,LT2}		JMP XRA
+
+//*************
+//  Operacao OR
+//*************
+MAP(0B0)	EQU I_ORA_B
+MAP(0B1)	EQU I_ORA_C
+MAP(0B2)	EQU I_ORA_D
+MAP(0B3)	EQU I_ORA_E
+MAP(0B4)	EQU I_ORA_H
+MAP(0B5)	EQU I_ORA_L
+MAP(0B6)	EQU I_ORA_M
+MAP(0B7)	EQU I_ORA_A
+
+I_ORA_B:	{EBCHD,LT2}
+ORA:		{EAULA,ET2ULA,OP2,OP1,EULA,LA,LCARRY,LPARITY,LACARRY,LZERO,LSIGNAL}	JMP BUSCA
+
+I_ORA_C:	{EBCLD,LT2}		JMP ORA
+
+I_ORA_D:	{EDEHD,LT2}		JMP ORA
+
+I_ORA_E:	{EDELD,LT2}		JMP ORA
+
+I_ORA_H:	{EHLHD,LT2}		JMP ORA
+
+I_ORA_L:	{EHLLD,LT2}		JMP ORA
+
+I_ORA_M:	{EHLA,ESA,EED,MR,LT2}	JMP ORA
+
+I_ORA_A:	{EAD,LT2}		JMP ORA
+
+//**************
+//  Operacao CMP
+//**************
+MAP(0B8)	EQU I_CMP_B
+MAP(0B9)	EQU I_CMP_C
+MAP(0BA)	EQU I_CMP_D
+MAP(0BB)	EQU I_CMP_E
+MAP(0BC)	EQU I_CMP_H
+MAP(0BD)	EQU I_CMP_L
+MAP(0BE)	EQU I_CMP_M
+MAP(0BF)	EQU I_CMP_A
+
+I_CMP_B:	{EBCHD,LT2}
+CMP:		{EAULA,ET2ULA,OP1,EULA,LCARRY,LPARITY,LACARRY,LZERO,LSIGNAL}	JMP BUSCA
+
+I_CMP_C:	{EBCLD,LT2}		JMP CMP
+
+I_CMP_D:	{EDEHD,LT2}		JMP CMP
+
+I_CMP_E:	{EDELD,LT2}		JMP CMP
+
+I_CMP_H:	{EHLHD,LT2}		JMP CMP
+
+I_CMP_L:	{EHLLD,LT2}		JMP CMP
+
+I_CMP_M:	{EHLA,ESA,EED,MR,LT2}	JMP CMP
+
+I_CMP_A:	{EAD,LT2}		JMP CMP
+
+//*********************
+//  Instrucoes de salto
+//*********************
+MAP(0C3)	EQU I_JMP_A16
+MAP(0C2)	EQU I_JNZ_A16
+MAP(0CA)	EQU I_JZ_A16
+MAP(0D2)	EQU I_JNC_A16
+MAP(0DA)	EQU I_JC_A16
+MAP(0E2)	EQU I_JPO_A16
+MAP(0EA)	EQU I_JPE_A16
+MAP(0F2)	EQU I_JP_A16
+MAP(0FA)	EQU I_JM_A16
+MAP(0E9)	EQU I_PCHL
+
+I_JMP_A16:	{EPCA,ESA,EED,MR,LXL}
+		{INCPC}
+		{EPCA,ESA,EED,MR,LXH}
+		{EXLD,LPCL}
+		{EXHD,LPCH}	JMP BUSCA
+
+I_JNZ_A16:	{}		JMP_ZERO NO_JMP
+		{}		JMP I_JMP_A16
+NO_JMP:		{INCPC}
+		{INCPC}		JMP BUSCA
+
+I_JZ_A16:	{}		JMP_ZERO I_JMP_A16
+		{INCPC}
+		{INCPC}		JMP BUSCA
+
+I_JNC_A16:	{}		JMP_CARRY NO_JMP
+		{}		JMP I_JMP_A16
+
+I_JC_A16:	{}		JMP_CARRY I_JMP_A16
+		{INCPC}
+		{INCPC}		JMP BUSCA
+
+I_JPO_A16:	{}		JMP_PARITY NO_JMP
+		{}		JMP I_JMP_A16
+
+I_JPE_A16:	{}		JMP_PARITY I_JMP_A16
+		{INCPC}
+		{INCPC}		JMP BUSCA
+
+I_JP_A16:	{}		JMP_SIGNAL NO_JMP
+		{}		JMP I_JMP_A16
+
+I_JM_A16:	{}		JMP_SIGNAL I_JMP_A16
+		{INCPC}
+		{INCPC}		JMP BUSCA
+
+I_PCHL:		{EHLHD,LPCH}
+		{EHLLD,LPCL}	JMP BUSCA
+
+//************************************
+//  Instrucoes de chamada de subrotina
+//************************************
+MAP(0CD)	EQU I_CALL_A16
+MAP(0C4)	EQU I_CNZ_A16
+MAP(0CC)	EQU I_CZ_A16
+MAP(0D4)	EQU I_CNC_A16
+MAP(0DC)	EQU I_CC_A16
+MAP(0E4)	EQU I_CPO_A16
+MAP(0EC)	EQU I_CPE_A16
+MAP(0F4)	EQU I_CP_A16
+MAP(0FC)	EQU I_CM_A16
+
+I_CALL_A16:	{DECSP,EPCHD,LXH}
+		{EPCLD,LXL}
+		{INCPC}
+		{INCPC}
+		{ESPA,ESA,EPCHD,ESD,MW}
+		{DECSP}
+		{ESPA,ESA,EPCLD,ESD,MW}
+		{EXA,ESA,EED,MR,LPCL}
+		{INCX}
+		{EXA,ESA,EED,MR,LPCH}	JMP BUSCA
+
+I_CNZ_A16:	{}		JMP_ZERO NO_CALL
+		{}		JMP I_CALL_A16
+
+I_CZ_A16:	{}		JMP_ZERO I_CALL_A16
+NO_CALL:	{INCPC}
+		{INCPC}		JMP BUSCA
+
+I_CNC_A16:	{}		JMP_CARRY NO_CALL
+		{}		JMP I_CALL_A16
+
+I_CC_A16:	{}		JMP_CARRY I_CALL_A16
+		{INCPC}
+		{INCPC}		JMP BUSCA
+
+I_CPO_A16:	{}		JMP_PARITY NO_CALL
+		{}		JMP I_CALL_A16
+
+I_CPE_A16:	{}		JMP_PARITY I_CALL_A16
+		{INCPC}
+		{INCPC}		JMP BUSCA
+
+I_CP_A16:	{}		JMP_SIGNAL NO_CALL
+		{}		JMP I_CALL_A16
+
+I_CM_A16:	{}		JMP_SIGNAL I_CALL_A16
+		{INCPC}
+		{INCPC}		JMP BUSCA
+
+//************************************
+//  Instrucoes de retorno de subrotina
+//************************************
+MAP(0C9)	EQU I_RET
+MAP(0C0)	EQU I_RNZ
+MAP(0C8)	EQU I_RZ
+MAP(0D0)	EQU I_RNC
+MAP(0D8)	EQU I_RC
+MAP(0E0)	EQU I_RPO
+MAP(0E8)	EQU I_RPE
+MAP(0F0)	EQU I_RP
+MAP(0F8)	EQU I_RM
+
+I_RET:		{ESPA,ESA,EED,MR,LPCL}
+		{INCSP}
+		{ESPA,ESA,EED,MR,LPCH}
+		{INCSP}	JMP BUSCA
+
+I_RNZ:		{}		JMP_ZERO BUSCA
+		{}		JMP I_RET
+
+I_RZ:		{}		JMP_ZERO I_RET
+		{}		JMP BUSCA
+
+I_RNC:		{}		JMP_CARRY BUSCA
+		{}		JMP I_RET
+
+I_RC:		{}		JMP_CARRY I_RET
+		{}		JMP BUSCA
+
+I_RPO:		{}		JMP_PARITY BUSCA
+		{}		JMP I_RET
+
+I_RPE:		{}		JMP_PARITY I_RET
+		{}		JMP BUSCA
+
+I_RP:		{}		JMP_SIGNAL BUSCA
+		{}		JMP I_RET
+
+I_RM:		{}		JMP_SIGNAL I_RET
+		{}		JMP BUSCA
+
+//********************
+//  Instrucoes RESTART
+//********************
+MAP(0C7)	EQU I_RST_0
+MAP(0CF)	EQU I_RST_1
+MAP(0D7)	EQU I_RST_2
+MAP(0DF)	EQU I_RST_3
+MAP(0E7)	EQU I_RST_4
+MAP(0EF)	EQU I_RST_5
+MAP(0F7)	EQU I_RST_6
+MAP(0FF)	EQU I_RST_7
+
+I_RST_0:
+I_RST_1:
+I_RST_2:
+I_RST_3:
+I_RST_4:
+I_RST_5:
+I_RST_6:
+I_RST_7:
+		{DECSP}
+		{ESPA,ESA,EPCHD,ESD,MW}
+		{DECSP}
+		{ESPA,ESA,EPCLD,ESD,MW}
+		{EK,SK1,LT1}
+		{EK,SK0,LT2}
+		{ET1ULA,ET2ULA,EULA,LT1,LT2}
+		{ET1ULA,ET2ULA,EULA,LT1,LT2}
+		{ET1ULA,ET2ULA,EULA,LT1,LT2}
+		{ET1ULA,ET2ULA,EULA,LT1,LT2}
+		{EID,LT2}
+		{ET1ULA,ET2ULA,OP2,OP0,EULA,LPCL}
+		{EK,LPCH}	JMP BUSCA
+
+//*******************
+//  Instrucoes ROTATE
+//*******************
+MAP(07)		EQU I_RLC
+MAP(0F)		EQU I_RRC
+MAP(17)		EQU I_RAL
+MAP(1F)		EQU I_RAR
+
+I_RLC:		{EAULA,OP3,EULA,LCARRY,LA}		JMP BUSCA
+
+I_RRC:		{EAULA,OP3,OP2,EULA,LCARRY,LA}		JMP BUSCA
+
+I_RAL:		{EAULA,OP3,OP0,EULA,LCARRY,LA}		JMP BUSCA
+
+I_RAR:		{EAULA,OP3,OP2,OP0,EULA,LCARRY,LA}	JMP BUSCA
+
+//************************
+//  Instrucoes de controle
+//************************
+MAP(00)		EQU I_NOP
+MAP(76)		EQU I_HLT
+MAP(0F3)	EQU I_DI
+MAP(0FB)	EQU I_EI
+
+I_NOP:		{}	JMP BUSCA
+I_HLT:		{}	JMP I_HLT
+I_DI:		{}	JMP BUSCA
+I_EI:		{}	JMP BUSCA
+
+//                                        *
+//*****************************************
+
+
+//*******************************************************
+//*******************************************************
+//** Lab Instrucoes "Instruções complexas"             **
+//**                                                   **
+//**   Aqui sao introduzidas instrucoes instrucoes     **
+//**   que manipulam blocos de bytes, as quais nao     **  
+//**   fazem parte do conjunto de instrucões do 8080:  **
+//**                                                   **
+//**   FILLBLOCK 08H                                   **
+//**   MOVBLOCK  10H                                   **
+//**   LONGADD   18H                                   **
+//**   LONGSUB   20H                                   **
+//**   JMP256    0CBH                                  **
+//**                                                   **
+//*******************************************************
+//*******************************************************
+
+//************************************************************
+// FILLBLOCK	; [08].
+// Preencher BC posicoes da memoria, a partir do endereco HL
+// com a constante A.
+// Nao deixa efeitos colaterais em PSW,BC,DE e HL.
+MAP(08)	EQU I_FILLBLOCK
+
+// Implementacao; A=constante, X conta bytes, Y=destino:
+
+// Efetua x<--BC para contar bytes;
+// Nada faz se X=0;
+I_FILLBLOCK:	{EBCHD,LXH}
+		{EBCLD,LXL}
+		{} JMP_XZERO FIM_FILLBLOCK
+
+// Efetua Y<--HL;
+		{EHLHD,LYH}
+		{EHLLD,LYL}
+
+// Efetua Mem[Y]<--A;
+LOOP_FILL:	{EYA,ESA,EAD,ESD,MW}
+		{INCY,DECX}
+
+// Efetua Y<--Y+1; X<--X-1;
+// Continua a copia enquanto X>0;
+		{} JMP_XZERO FIM_FILLBLOCK
+		{} JMP LOOP_FILL
+
+FIM_FILLBLOCK:	{} JMP BUSCA
+
+
+//************************************************************
+// MOVBLOCK	; [10].
+// Copiar BC bytes a partir do endereco DE para o endereco HL.
+// Nao deixa efeitos colaterais em PSW,BC,DE e HL.
+
+MAP(10)	EQU I_MOVBLOCK
+
+// Implementacao; X conta bytes, Y=origem, Z=destino:
+
+// Efetua X<--BC e nada faz se X=0;
+I_MOVBLOCK:	{EBCHD,LXH}
+		{EBCLD,LXL}
+		{} JMP_XZERO FIM_MOVBLOCK
+
+// Efetua Y<--DE;
+		{EDEHD,LYH}
+		{EDELD,LYL}
+
+// Efetua Z<--HL;
+		{EHLHD,LZH}
+		{EHLLD,LZL}
+
+// Efetua T1<--Mem[Y]; mem[Z]<--T1;
+LOOP_MOVBLOCK:	{EYA,ESA,EED,MR,LT1}
+		{EZA,ESA,ET1D,ESD,MW}
+
+// Y<--Y+1; Z<--Z+1;X<--X-1;
+// Continua a copia enquanto X>0;
+		{INCY,INCZ,DECX} 
+		{} JMP_XZERO FIM_MOVBLOCK
+		{} JMP LOOP_MOVBLOCK
+
+FIM_MOVBLOCK:	{} JMP BUSCA
+
+
+//************************************************************
+// LONGADD	; [18].
+// Soma os numeros de C bytes apontados por HL e DE
+// e coloca o resultado a partir do endereço HL.
+// Os numeros são armazenados do byte mais significativo
+// para o menos significativo. Afeta apenas CARRY.
+
+MAP(18)	EQU	I_LONGADD
+// Implementacao; X conta bytes, Y  e Z parcelas, Z soma:
+
+// Efetua X<--BC e nada faz se X=0;
+I_LONGADD:	{EK,LXH}
+		{EBCLD,LXL}
+		{}  JMP_XZERO FIM_LONGADD
+
+// Efetua Y<--DE; Z<--HL
+		{EDEHD,LYH}
+		{EDELD,LYL}
+		{EHLHD,LZH}
+		{EHLLD,LZL}
+
+// Desloca Y de X-1 para apontar para digito menos significativo.
+		{EXLD,LT1}
+		{EYLD,LT2}
+		{ET1ULA,ET2ULA,EULA,LYL,LCARRY}
+		{EXHD,LT1}
+		{EYHD,LT2}
+		{ET1ULA,ET2ULA,OP0,EULA,LYH}
+		{DECY}
+
+// Desloca Z de X-1 para apontar para digito menos significativo.
+		{EXLD,LT1}
+		{EZLD,LT2}
+		{ET1ULA,ET2ULA,EULA,LZL,LCARRY}
+		{EXHD,LT1}
+		{EZHD,LT2}
+		{ET1ULA,ET2ULA,OP0,EULA,LZH}
+		{DECZ}
+
+// Efetua o loop da soma.
+		{CLEARCARRY}
+LOOP_LONGADD:	{EYA,ESA,EED,MR,LT1} // T1<--Mem[Y]
+		{EZA,ESA,EED,MR,LT2} // T2<--Mem[Z]
+
+		{ET1ULA,ET2ULA,OP0,EULA,LT3,LCARRY} // T3<--(T1+T2+CARRY)
+		{EZA,ESA,ET3D,ESD,MW} // Mem[Z]<--T3
+
+// Y<--Y-1; Z<--Z-1; X<--X-1
+// Continua enquanto X>0
+		{DECY,DECZ,DECX} 
+		{} JMP_XZERO FIM_LONGADD
+		{} JMP LOOP_LONGADD
+FIM_LONGADD:	{} JMP BUSCA
+
+
+//************************************************************
+// LONGSUB	; [20].
+// Subtrai o numero de C bytes apontado por DE 
+// do numero de C bytes apontado por HL e coloca o
+// o resultado a partir do endereço HL.
+// Os numeros são armazenados do byte mais significativo
+// para o menos significativo. Afeta apenas CARRY.
+MAP(20)	EQU	I_LONGSUB
+// Implementacao; X conta bytes, Y  e Z parcelas, Z subtracao:
+
+// Efetua X<--BC e nada faz se X=0;
+I_LONGSUB:	{EK,LXH}
+		{EBCLD,LXL}
+		{}  JMP_XZERO FIM_LONGSUB
+
+// Efetua Y<--DE; Z<--HL
+		{EDEHD,LYH}
+		{EDELD,LYL}
+		{EHLHD,LZH}
+		{EHLLD,LZL}
+
+// Desloca Y de X-1 para apontar para digito menos significativo.
+		{EXLD,LT1}
+		{EYLD,LT2}
+		{ET1ULA,ET2ULA,EULA,LYL,LCARRY}
+		{EXHD,LT1}
+		{EYHD,LT2}
+		{ET1ULA,ET2ULA,OP0,EULA,LYH}
+		{DECY}
+
+// Desloca Z de X-1 para apontar para digito menos significativo.
+		{EXLD,LT1}
+		{EZLD,LT2}
+		{ET1ULA,ET2ULA,EULA,LZL,LCARRY}
+		{EXHD,LT1}
+		{EZHD,LT2}
+		{ET1ULA,ET2ULA,OP0,EULA,LZH}
+		{DECZ}
+
+// Efetua o loop da subtracao.
+		{CLEARCARRY}
+LOOP_LONGSUB:	{EYA,ESA,EED,MR,LT1} // T1<--Mem[Y]
+		{EZA,ESA,EED,MR,LT2} // T2<--Mem[Z]
+
+		{ET1ULA,ET2ULA,OP1,OP0,EULA,LT3,LCARRY} // T3<--(T1-T2-CARRY)
+		{EZA,ESA,ET3D,ESD,MW} // Mem[Z]<--T3
+
+// Y<--Y-1; Z<--Z-1; X<--X-1
+// Continua enquanto X>0
+		{DECY,DECZ,DECX}
+		{} JMP_XZERO FIM_LONGSUB
+		{} JMP LOOP_LONGSUB
+FIM_LONGSUB:	{} JMP BUSCA
+
+
+
+//************************************************************
+// JMP256	; [CB].
+// Salta para o endereco armazenado na
+// tabela de words apontada por HL+2*A.
+// A funciona como um indice na tabela, a qual
+// pode conter ate 256 enderecos.
+// Nao deixa efeitos colaterais em PSW,BC,DE e HL.
+MAP(0CB)	EQU	I_JMP256
+I_JMP256:	{EFLAGS,LT3}		// Salva FLAGS
+
+// X <-- 2*A
+		{EAD,LT2}
+ 		{EAULA,ET2ULA,EULA,LXL,LCARRY}
+		{EK,LT1,LT2}
+		{ET1ULA,ET2ULA,EULA,OP0,LXH}
+
+// X <-- X + HL
+		{EXLD,LT1}
+		{EHLLD,LT2}
+		{ET1ULA,ET2ULA,EULA,LXL,LCARRY}
+		{EXHD,LT1}
+		{EHLHD,LT2}
+		{ET1ULA,ET2ULA,OP0,EULA,LXH}
+
+// PCL <-- Mem[X]
+// PCH <-- Mem[X+1]
+		{EXA,ESA,EED,MR,LPCL}
+		{INCX}
+		{EXA,ESA,EED,MR,LPCH}
+
+// Restaura FLAGS e vai para BUSCA
+		{ET3D,LFLAGS} JMP BUSCA
+
+//************************************************************
+
+END
