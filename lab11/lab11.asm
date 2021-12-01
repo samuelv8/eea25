@@ -1,11 +1,11 @@
 ;*************************************************************************
-; testLONGSUB.ASM                                                        *
+; LAB11		                                                         *
 ;                                                                        *
 ;    Programa teste para as instruções:                                  *
-;	- FILLBLOCK [08H]                                                *
-;	- MOVBLOCK [10H]                                                 *
-;	- LONGSUB [18H]                                                  *
-;	- LONGADD [20H]                                                  *
+;	- FILLBLOCK	                                                 *
+;	- MOVBLOCK	                                                 *
+;	- LONGSUB	                                                 *
+;	- LONGADD	                                                 *
 ;                                                                        *
 ;    As quais nao fazem parte do conjunto instrucoes do 8080/8085.       *
 ;                                                                        *
